@@ -226,7 +226,7 @@ class Engine(object):
         self.__signal_int_count += 1
         self.__logger.debug('Received SIGNAL INT {times} times.', times=self.__signal_int_count)
         if self.__signal_int_count >= 2:
-            self.__logger.debug('Received SIGNAL INT over 2 times, closing the aiocrawler...')
+            self.__logger.debug('Received SIGNAL INT over 2 times, closing the aiocrawler by force...')
             tasks = asyncio.Task.all_tasks()
             for task in tasks:
                 task.cancel()
