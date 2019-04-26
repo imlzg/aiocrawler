@@ -1,0 +1,6 @@
+aioredis
+aiomysql
+aiohttp
+yarl
+loguru
+parsel

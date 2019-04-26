@@ -1,0 +1,20 @@
+# coding: utf-8
+# Date      : $date
+# PROJECT   : $project_name
+# File      : $filename
+from core.middlewares.middleware import BaseDownloaderMiddleware
+from core.settings import BaseSettings
+
+
+class $classname(BaseDownloaderMiddleware):
+    def __init__(self, settings: BaseSettings):
+        BaseDownloaderMiddleware.__init__(self, settings)
+
+    def process_request(self, request):
+        pass
+
+    def process_response(self, request, response):
+        pass
+
+    def process_exception(self, request, exception):
+        pass
