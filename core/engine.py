@@ -159,8 +159,6 @@ class Engine(object):
         """
         try:
             while True:
-                if self.__is_stop:
-                    break
 
                 sleep(self.__settings.PROCESS_DALEY)
                 word = await self.__scheduler.get_word()
@@ -180,8 +178,6 @@ class Engine(object):
         """
         try:
             while True:
-                if self.__is_stop:
-                    break
 
                 sleep(self.__settings.PROCESS_DALEY)
                 request = await self.__scheduler.get_request()
@@ -207,8 +203,6 @@ class Engine(object):
         Log crawled information.
         """
         while True:
-            if self.__is_stop:
-                break
 
             request_count = await self.__scheduler.get_total_request()
             self.__logger.debug('Total Crawled {crawled_count} Pages, {item_count} Items; '
@@ -223,8 +217,11 @@ class Engine(object):
         self.__signal_int_count += 1
         self.__logger.debug('Received SIGNAL INT {times} times.', times=self.__signal_int_count)
         if self.__signal_int_count >= 2:
-            self.__is_stop = True
             self.__logger.debug('Received SIGNAL INT over 2 times, closing the aiocrawler...')
+            tasks = asyncio.Task.all_tasks()
+            for task in tasks:
+                task.cancel()
+            self.__loop.stop()
 
     def run(self):
         """
