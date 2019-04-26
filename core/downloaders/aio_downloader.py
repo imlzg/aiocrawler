@@ -26,7 +26,6 @@ class AioDownloader(BaseDownloader):
                                          proxy=request['proxy'],
                                          headers=request['headers'],
                                          timeout=request['timeout'],
-                                         raise_for_status=True
                                          )
             else:
                 resp = await session.post(url=request['url'],
@@ -34,7 +33,6 @@ class AioDownloader(BaseDownloader):
                                           proxy=request['proxy'],
                                           headers=request['headers'],
                                           timeout=request['timeout'],
-                                          raise_for_status=True
                                           )
 
             status = resp.status

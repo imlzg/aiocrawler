@@ -140,12 +140,17 @@ class Engine(object):
                 for field in self.get_fields(one):
                     item_copy[field] = one.get(field, None)
 
-                self.__logger.success('Crawled from <{method} {url}>: \n {item}',
+                self.__logger.success('Crawled from <{method} {url}> \n {item}',
                                       method=request['method'], url=request['url'], item=item_copy)
-                tasks.append(asyncio.ensure_future(self.__scheduler.send_item(item_copy)))
+                tasks.append(asyncio.ensure_future(self.__item_filter_and_send__(item_copy)))
 
         if len(tasks):
             await asyncio.wait(tasks)
+
+    async def __item_filter_and_send__(self, item: Item):
+        item = await self.__filters.filter_item(item)
+        if item:
+            await self.__scheduler.send_item(item)
 
     @staticmethod
     def get_fields(item: Item):
@@ -168,6 +173,8 @@ class Engine(object):
                     if request:
                         await self.__scheduler.send_request(request)
 
+        except asyncio.CancelledError:
+            pass
         except Exception as e:
             self.__logger.error(e)
             self.__logger.error(traceback.format_exc(limit=10))
@@ -194,6 +201,8 @@ class Engine(object):
                         data = await self.__downloader.get_response(request)
                         await self.handle_response(request, data)
 
+        except asyncio.CancelledError:
+            pass
         except Exception as e:
             self.__logger.error(e)
             self.__logger.error(traceback.format_exc(limit=10))
@@ -221,6 +230,10 @@ class Engine(object):
             tasks = asyncio.Task.all_tasks()
             for task in tasks:
                 task.cancel()
+            asyncio.ensure_future(self.stop_loop())
+
+    async def stop_loop(self):
+        if self.__loop:
             self.__loop.stop()
 
     def run(self):

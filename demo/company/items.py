@@ -8,3 +8,14 @@ from core.item import Item
 
 class CompanyItem(Item):
     name = Field()
+    legal_person = Field()
+    province = Field()
+    date = Field()
+    capital = Field()
+    status = Field()
+    region_code = Field()
+    address = Field()
+    credit_code = Field()
+    phone_number = Field()
+    email = Field()
+    scope = Field()

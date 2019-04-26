@@ -16,6 +16,6 @@ if __name__ == "__main__":
     engine = Engine(spider=spider,
                     settings=settings,
                     downloader_middlewares=[
-                        middleware
+                        (middleware, 300)
                     ])
     engine.run()

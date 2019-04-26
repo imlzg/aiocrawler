@@ -22,7 +22,7 @@ with open('1.html', 'r', encoding='utf-8') as f:
     content = f.read()
 
 html = selector.Selector(text=content)
-coms = html.xpath('//ul[@class="cony_div"]//a')
-for com in coms:
-    url = com.xpath('@href').get()
-    name = com.xpath('b[contains(text(), "公司")]/text()').get()
+urls = html.xpath('//div[@class="right_column"]//li')
+for url in urls:
+    print(url.xpath('b/text()').get())
+    print(url.xpath('span//text()').get())

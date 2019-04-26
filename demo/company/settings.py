@@ -15,13 +15,13 @@ class CompanySettings(BaseSettings):
     DEFAULT_TIMEOUT = 20
     DEFAULT_HEADERS = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Host': 'shop.99114.com',
-        'Referer': 'https://shop.99114.com'
+        'Host': 'www.mingluji.com',
+        'Referer': 'https://www.mingluji.com'
     }
     MYSQL_HOST = 'xianyu.123nat.com'
     MYSQL_DB = 'shunqi'
     MYSQL_USER = 'shunqi'
     MYSQL_PASSWORD = '1291988293'
 
-    DOWNLOAD_DALEY = 0.1
+    DOWNLOAD_DALEY = 0.5
     PROCESS_DALEY = 0.01
