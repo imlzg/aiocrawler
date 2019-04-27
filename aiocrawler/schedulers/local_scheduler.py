@@ -3,10 +3,10 @@
 # Author    : kylin1020
 # PROJECT   : aiocrawler
 # File      : local_scheduler
-from aiocrawler.schedulers.scheduler import BaseScheduler
-from aiocrawler.settings import BaseSettings
-from aiocrawler.item import Item
-from aiocrawler.request import Request
+from aiocrawler import BaseScheduler
+from aiocrawler import BaseSettings
+from aiocrawler import Item
+from aiocrawler import Request
 
 
 class LocalScheduler(BaseScheduler):
