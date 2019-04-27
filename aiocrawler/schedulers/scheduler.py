@@ -2,7 +2,6 @@
 
 from aiocrawler.request import Request
 from aiocrawler.item import Item
-from aiocrawler.field import Field
 from aiocrawler.settings import BaseSettings
 
 
