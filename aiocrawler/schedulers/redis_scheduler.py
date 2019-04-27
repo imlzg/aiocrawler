@@ -1,6 +1,6 @@
 # coding: utf-8
 # Date      : 2019/4/23
-# Author    : kylin
+# Author    : kylin1020
 # PROJECT   : aiocrawler
 # File      : redis_scheduler
 from aiocrawler.schedulers.scheduler import BaseScheduler
