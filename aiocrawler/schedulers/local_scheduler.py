@@ -13,17 +13,17 @@ class LocalScheduler(BaseScheduler):
     def __init__(self, settings: BaseSettings):
         BaseScheduler.__init__(self, settings)
 
-    def get_total_request(self):
+    async def get_total_request(self):
         pass
 
-    def get_request(self):
+    async def get_request(self):
         pass
 
-    def get_word(self):
+    async def get_word(self):
         pass
 
-    def send_item(self, item: Item):
+    async def send_item(self, item: Item):
         pass
 
-    def send_request(self, request: Request):
+    async def send_request(self, request: Request):
         pass

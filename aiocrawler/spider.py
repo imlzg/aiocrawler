@@ -2,18 +2,21 @@
 from typing import Union, List
 from json import loads
 from parsel import Selector
-from aiocrawler.settings import BaseSettings
-from aiocrawler.request import Request
-from aiocrawler.response import Response
+from aiocrawler import BaseSettings
+from aiocrawler import Request
+from aiocrawler import Response
 
 
 class Spider(object):
+    name = None
+    words = None
+
     def __init__(self, settings: BaseSettings):
         self.setting = settings
         self.logger = self.setting.LOGGER
 
     def make_request(self, word: str) -> Union[List[Request], Request]:
-        return Request(url=word)
+        raise NotImplementedError('{} make_request method is not define'.format(self.__class__.__name__))
 
     def parse(self, response: Response):
         pass

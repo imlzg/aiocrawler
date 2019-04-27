@@ -75,7 +75,6 @@ class SpiderTemplate(object):
     def __gen_run__(self):
         tmpl_name = 'run.tmpl'
         sub_data = {
-            'spider_name': self.__project_name.capitalize() + 'Spider',
             'settings_name': self.__project_name.capitalize() + 'Settings',
         }
         self.gen(tmpl_name=tmpl_name, sub_data=sub_data)

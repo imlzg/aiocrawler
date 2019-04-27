@@ -7,6 +7,8 @@ from aiocrawler.spider import Spider
 from aiocrawler.engine import Engine
 from aiocrawler.middlewares.middleware import BaseDownloaderMiddleware
 from aiocrawler.schedulers.scheduler import BaseScheduler
+from aiocrawler.filters.filter import BaseFilter
+from aiocrawler.downloaders.downloader import BaseDownloader
 
 __all__ = ['Request',
            'Item',
@@ -17,5 +19,6 @@ __all__ = ['Request',
            'BaseDownloaderMiddleware',
            'Engine',
            'BaseScheduler',
-           ''
+           'BaseFilter',
+           'BaseDownloader'
            ]

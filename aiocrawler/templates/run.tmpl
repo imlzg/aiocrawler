@@ -3,7 +3,6 @@
 # PROJECT   : $project_name
 # File      : $filename
 from aiocrawler import Engine
-from $project_name.spiders import $spider_name
 from $project_name.settings import $settings_name
 
 
@@ -11,7 +10,7 @@ def run(spider_module):
     settings = $settings_name()
     spider = spider_module(settings)
     middlewares = [
-        (middleware, value) for middleware, value in settings.DOWNLOADER_MIDDLEWARES
+        (middleware(settings), value) for middleware, value in settings.DOWNLOADER_MIDDLEWARES
     ]
     engine = Engine(
         spider=spider,
