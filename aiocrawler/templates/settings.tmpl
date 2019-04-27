@@ -3,6 +3,7 @@
 # PROJECT   : $project_name
 # File      : $filename
 from aiocrawler.settings import BaseSettings
+from $project_name.middlewares import $middleware_name
 
 
 class $classname(BaseSettings):
@@ -24,3 +25,7 @@ class $classname(BaseSettings):
 
     DOWNLOAD_DALEY = 0
     PROCESS_DALEY = 0.01
+    DOWNLOADER_MIDDLEWARES = [
+        ($middleware_name, 300),
+
+    ]

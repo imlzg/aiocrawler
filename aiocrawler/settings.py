@@ -32,3 +32,5 @@ class BaseSettings:
     PROCESS_DALEY = 0.01
 
     ALLOWED_CODES = []
+
+    DOWNLOADER_MIDDLEWARES = []

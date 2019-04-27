@@ -4,18 +4,18 @@
 # File      : $filename
 from aiocrawler.engine import Engine
 from $project_name.spiders import $spider_name
-from $project_name.middlewares import $middleware_name
 from $project_name.settings import $settings_name
 
 
-if __name__ == "__main__":
+def run(spider_module):
     settings = $settings_name()
-    spider = $spider_name(settings)
-    middleware = $middleware_name(settings)
-
-    engine = Engine(spider=spider,
-                    settings=settings,
-                    downloader_middlewares=[
-                        (middleware, 300)
-                    ])
+    spider = spider_module(settings)
+    middlewares = [
+        (middleware, value) for middleware, value in settings.DOWNLOADER_MIDDLEWARES
+    ]
+    engine = Engine(
+        spider=spider,
+        settings=settings,
+        downloader_middlewares=middlewares
+    )
     engine.run()

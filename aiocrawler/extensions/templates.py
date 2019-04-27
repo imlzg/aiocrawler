@@ -3,6 +3,7 @@ from pathlib import Path
 from datetime import date
 from typing import Union
 from string import Template
+import traceback
 from aiocrawler.settings import BaseSettings
 
 
@@ -37,7 +38,7 @@ class SpiderTemplate(object):
                 file.unlink()
             self.__project_dir.rmdir()
 
-            self.__logger.error(e)
+            self.__logger.error(traceback.format_exc(limit=10))
 
     def gen(self, tmpl_name: str, sub_data: dict):
         tmpl_file = self.__templates_dir/tmpl_name
@@ -67,6 +68,7 @@ class SpiderTemplate(object):
         tmpl_name = 'spiders.tmpl'
         sub_data = {
             'classname': self.__project_name.capitalize() + 'Spider',
+            'name': self.__project_name.lower()
         }
         self.gen(tmpl_name=tmpl_name, sub_data=sub_data)
 
@@ -74,7 +76,6 @@ class SpiderTemplate(object):
         tmpl_name = 'run.tmpl'
         sub_data = {
             'spider_name': self.__project_name.capitalize() + 'Spider',
-            'middleware_name': self.__project_name.capitalize() + 'Middleware',
             'settings_name': self.__project_name.capitalize() + 'Settings',
         }
         self.gen(tmpl_name=tmpl_name, sub_data=sub_data)
@@ -89,7 +90,8 @@ class SpiderTemplate(object):
     def __gen_settings__(self):
         tmpl_name = 'settings.tmpl'
         sub_data = {
-            'classname': self.__project_name.capitalize() + 'Settings'
+            'classname': self.__project_name.capitalize() + 'Settings',
+            'middleware_name': self.__project_name.capitalize() + 'Middleware'
         }
         self.gen(tmpl_name=tmpl_name, sub_data=sub_data)
 
