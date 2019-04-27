@@ -3,3 +3,6 @@ __pycache__/
 .git/
 .idea/
 demo/
+.pypirc
+dist/
+aiocrawler.egg-info/

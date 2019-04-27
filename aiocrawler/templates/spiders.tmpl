@@ -1,0 +1,18 @@
+# coding: utf-8
+# Date      : $date
+# PROJECT   : $project_name
+# File      : $filename
+from aiocrawler.request import Request
+from aiocrawler.spider import Spider
+from aiocrawler.settings import BaseSettings
+
+
+class $classname(Spider):
+    def __init__(self, settings: BaseSettings):
+        Spider.__init__(self, settings)
+
+    def make_request(self, word):
+        return Request(word, callback=self.parse)
+
+    def parse(self, response):
+        pass

@@ -5,33 +5,27 @@
 # File      : setup
 from setuptools import setup, find_packages
 
-
 setup(
     name="aiocrawler",
     version="1.0",
-    keywords=["spider", "crawler", "async"],
-    description="Aiocrawler is a asynchronous web crawler",
-    license="MIT",
+    keywords=["spider", "asynchronous", "crawler", "distributed"],
     author="kylin1020",
-    author_email="kylin1020@google.com",
+    author_email="kylin0521@gmail.com",
+    description="The aiocrawler is a asynchronous/distributed web crawler/spider",
     url="https://github.com/kylin1020/aiocrawler",
+    license="MIT",
     packages=find_packages(),
-    include_package_data=True,
-    install_requires=["aiohttp", "aioredis", "yarl", "loguru", "parsel"],
-    entry_points={'console_scripts': [
-        'aiocrawler = aiocrawler.core.aiocrawler:commands',
+    package_data={"": ["*.py", "*.tmpl"]},
+    install_requires=["aiohttp", "aioredis", "yarl", "parsel", "loguru"],
+    entry_points={"console_scripts": [
+        "aiocrawler = aiocrawler.commands:main"
     ]},
     classifiers=[
         "Environment :: Web Environment",
-        "Intended Audience :: Developers",
-        "Operating System :: OS Independent",
-        "Topic :: Text Processing :: Indexing",
-        "Topic :: Utilities",
         "Topic :: Internet",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        ]
+        "Programming Language :: Python :: 3.7"
+    ]
 )
-
