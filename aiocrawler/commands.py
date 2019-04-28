@@ -3,12 +3,13 @@
 # Author    : kylin
 # PROJECT   : aiocrawler
 # File      : aiocrawler
+import sys
 import argparse
+from pathlib import Path
 from pyclbr import readmodule
 from importlib import import_module
 from aiocrawler.settings import BaseSettings
 from aiocrawler.extensions.templates import SpiderTemplate
-
 
 logger = BaseSettings.LOGGER
 
@@ -38,6 +39,10 @@ def main():
 def get_module(name: str, spider_module_name: str = 'spiders'):
     module = None
     try:
+        current_dir = str(Path('').cwd())
+        if current_dir not in sys.path:
+            sys.path.append(current_dir)
+
         spider_module = import_module(spider_module_name)
 
         for module_name in readmodule(spider_module_name).keys():

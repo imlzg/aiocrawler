@@ -8,8 +8,8 @@ from aiocrawler import Response
 
 
 class Spider(object):
-    name = None
-    words = None
+    name: str = None
+    words: List[str] = None
 
     def __init__(self, settings: BaseSettings):
         self.setting = settings
