@@ -4,10 +4,10 @@
 # PROJECT   : aiocrawler
 # File      : exporters
 from aiocrawler.settings import BaseSettings
-from typing import List, Union
+from typing import List
 from aiocrawler.item import Item
 from aiocrawler.field import Field
-from numpy import ceil
+from math import ceil
 
 
 class BaseExporter(object):
@@ -15,6 +15,7 @@ class BaseExporter(object):
         self.settings = settings
         self.logger = settings.LOGGER
         self.item_class = item_class
+        self.item_class_name = item_class.__class__.__name__
 
     @staticmethod
     def chunk(items: List[Item], batch_size: int = 512):

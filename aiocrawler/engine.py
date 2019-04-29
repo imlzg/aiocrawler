@@ -2,22 +2,23 @@
 import traceback
 import asyncio
 import signal
-from asyncio import AbstractEventLoop
 from time import sleep
-from aiocrawler.item import Item
-from aiocrawler.field import Field
-from aiocrawler.request import Request
-from aiocrawler.filters.filter import BaseFilter
-from aiocrawler.settings import BaseSettings
-from aiocrawler.schedulers.scheduler import BaseScheduler
+from random import uniform
 from typing import List, Union, Iterator, Tuple
-from aiocrawler.middlewares.middleware import BaseDownloaderMiddleware
+from asyncio import AbstractEventLoop
+from aiocrawler import Item
+from aiocrawler import Field
+from aiocrawler import Request
+from aiocrawler import BaseFilter
+from aiocrawler import BaseSettings
+from aiocrawler import BaseScheduler
+from aiocrawler import BaseDownloaderMiddleware
+from aiocrawler import Response
+from aiocrawler import Spider
+from aiocrawler import BaseDownloader
 from aiocrawler.middlewares.user_agent_middleware import UserAgentMiddleware
 from aiocrawler.middlewares.set_default_middleware import SetDefaultRequestMiddleware
 from aiocrawler.middlewares.allowed_codes_middleware import AllowedCodesMiddleware
-from aiocrawler.response import Response
-from aiocrawler.spider import Spider
-from aiocrawler.downloaders.downloader import BaseDownloader
 
 
 class Engine(object):
@@ -185,19 +186,14 @@ class Engine(object):
         """
         try:
             while True:
-
-                sleep(self.__settings.PROCESS_DALEY)
                 request = await self.__scheduler.get_request()
                 if request:
-                    self.__logger.debug('Received 1 <Request> <url: {url}> from {scheduler_name}',
-                                        url=request['url'],
-                                        scheduler_name=self.__scheduler.__class__.__name__)
                     request = await self.__filters.filter_request(request)
                     if request:
                         for downloader_middleware, _ in self.__downloader_middlewares:
                             downloader_middleware.process_request(request)
 
-                        sleep(self.__settings.DOWNLOAD_DALEY)
+                        sleep(self.__settings.DOWNLOAD_DALEY * uniform(0.5, 1.5))
                         data = await self.__downloader.get_response(request)
                         await self.handle_response(request, data)
 

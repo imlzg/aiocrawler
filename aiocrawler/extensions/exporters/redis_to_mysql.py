@@ -57,7 +57,7 @@ class RedisToMysql(BaseExporter):
                     await self.__create_tables__(cur)
 
     async def __create_tables__(self, cur):
-        await self.__create__(self.item_class, cur)
+        await self.__create__(self.item_class_list, cur)
 
     async def __create__(self, item_class: Item, cur):
         self.logger.debug(f'Creating the table <name: {self.__table_name}>...')
@@ -103,7 +103,7 @@ class RedisToMysql(BaseExporter):
                             f'The Mysql Server <table_name: {self.__table_name}>')
 
     def __gen_item_data(self, items: Iterable[Item]) -> List:
-        fields = self.get_fields(self.item_class)
+        fields = self.get_fields(self.item_class_list)
 
         for item in items:
             try:

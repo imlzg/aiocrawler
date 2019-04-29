@@ -1,8 +1,8 @@
 # coding: utf-8
-from aiocrawler.settings import BaseSettings
+from aiocrawler import BaseSettings
 from typing import Union
-from aiocrawler.request import Request
-from aiocrawler.response import Response
+from aiocrawler import Request
+from aiocrawler import Response
 
 
 class BaseDownloader(object):
@@ -12,6 +12,3 @@ class BaseDownloader(object):
 
     async def get_response(self, request: Request) -> Union[Response, Exception, None]:
         raise NotImplementedError('{} get_response is not define'.format(self.__class__.__name__))
-
-
-

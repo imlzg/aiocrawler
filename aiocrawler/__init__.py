@@ -4,7 +4,6 @@ from aiocrawler.settings import BaseSettings
 from aiocrawler.response import Response
 from aiocrawler.field import Field
 from aiocrawler.spider import Spider
-from aiocrawler.engine import Engine
 from aiocrawler.middlewares.middleware import BaseDownloaderMiddleware
 from aiocrawler.schedulers.scheduler import BaseScheduler
 from aiocrawler.filters.filter import BaseFilter
@@ -17,7 +16,6 @@ __all__ = ['Request',
            'Response',
            'Spider',
            'BaseDownloaderMiddleware',
-           'Engine',
            'BaseScheduler',
            'BaseFilter',
            'BaseDownloader'

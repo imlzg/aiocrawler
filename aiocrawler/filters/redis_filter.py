@@ -47,10 +47,10 @@ class RedisFilter(BaseFilter):
         resp = await self.__redis_pool.execute('sismember', self.__redis_filters_key, hex_data)
         if resp:
             self.logger.debug('The Item has existed in The Redis Server: {}'.format(hex_data))
-            return item
+            return None
         else:
             await self.__redis_pool.execute('sadd', self.__redis_filters_key, hex_data)
-            return None
+            return item
 
     async def exist_request(self, request: Request):
 
