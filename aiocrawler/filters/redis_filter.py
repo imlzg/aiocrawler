@@ -21,7 +21,7 @@ class RedisFilter(BaseFilter):
         self.__redis_pool: ConnectionsPool = None
         self.__redis_filters_key = settings.REDIS_PROJECT_NAME + ':filters'
 
-    async def __initialize_redis_pool(self):
+    async def initialize_redis_pool(self):
         if not self.settings.REDIS_URL:
             raise ValueError('REDIS_URL is not configured in {setting_name}'.format(
                 setting_name=self.settings.__class__.__name__))
@@ -29,9 +29,6 @@ class RedisFilter(BaseFilter):
             self.__redis_pool = await create_pool(self.settings.REDIS_URL)
 
     async def filter_request(self, request: Request):
-        if not self.__redis_pool:
-            await self.__initialize_redis_pool()
-
         if request['dont_filter']:
             return request
 
@@ -40,9 +37,6 @@ class RedisFilter(BaseFilter):
         return request
 
     async def filter_item(self, item: Item):
-        if not self.__redis_pool:
-            await self.__initialize_redis_pool()
-
         hex_data = self.sha_item(item)
         resp = await self.__redis_pool.execute('sismember', self.__redis_filters_key, hex_data)
         if resp:

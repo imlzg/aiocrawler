@@ -55,6 +55,8 @@ class Engine(object):
         """
         Initialize all necessary components.
         """
+        tasks = []
+
         if not self.__settings:
             self.__settings = BaseSettings()
 
@@ -65,11 +67,13 @@ class Engine(object):
         if not self.__scheduler:
             from aiocrawler.schedulers.redis_scheduler import RedisScheduler
             self.__scheduler = RedisScheduler(settings=self.__settings)
+            tasks.append(asyncio.ensure_future(self.__scheduler.initialize_redis_pool()))
 
         if not self.__filters:
             # Use Redis Filters by default.
             from aiocrawler.filters.redis_filter import RedisFilter
             self.__filters = RedisFilter(settings=self.__settings)
+            tasks.append(asyncio.ensure_future(self.__scheduler.initialize_redis_pool()))
 
         if not self.__downloader_middlewares:
             self.__downloader_middlewares = []
@@ -81,8 +85,8 @@ class Engine(object):
         ]
         self.__downloader_middlewares.extend(default_middlewares)
         self.__downloader_middlewares = sorted(self.__downloader_middlewares, key=lambda x: x[1])
-
-        self.__is_process_run = True
+        if len(tasks):
+            await asyncio.wait(tasks)
 
     async def handle_response(self, request: Request, data: Union[Response, Exception, None]):
         """
