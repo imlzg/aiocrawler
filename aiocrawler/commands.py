@@ -9,21 +9,24 @@ from pathlib import Path
 from pyclbr import readmodule
 from importlib import import_module
 from aiocrawler.settings import BaseSettings
-from aiocrawler.extensions.templates import SpiderTemplate
-
 logger = BaseSettings.LOGGER
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("commands", choices=["startproject", "run"], help="The Aiocrawler Commands")
-    parser.add_argument('name', help="The Project Name you want to start")
+    parser.add_argument("commands", choices=["startproject", "run", "output"], help="The Aiocrawler Commands")
+    parser.add_argument('name', help="The Project Name", default=None)
+    parser.add_argument('--filename', '-f', help='The Filename', default=None)
+    parser.add_argument('--item', '-i', help='The Item you want to output, output all items by default.', default=None)
     args = parser.parse_args()
 
-    if args.commands == "startproject":
+    if args.commands == "startproject" and args.name:
+        from aiocrawler.extensions.templates import SpiderTemplate
+
         tmpl = SpiderTemplate(args.name)
         tmpl.gen_project()
-    elif args.commands == "run":
+    elif args.commands == "run" and args.name:
+
         spider = get_module(args.name)
         if not spider:
             logger.error('The Spider name you provided is not found in this directory.')
@@ -35,8 +38,12 @@ def main():
         except Exception as e:
             logger.error(e)
 
+    elif args.commands == "output" and args.filename:
+        item_module = import_module('.items')
+
 
 def get_module(name: str, spider_module_name: str = 'spiders'):
+
     module = None
     try:
         current_dir = str(Path('').cwd())
