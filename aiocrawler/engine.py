@@ -73,7 +73,7 @@ class Engine(object):
             # Use Redis Filters by default.
             from aiocrawler.filters.redis_filter import RedisFilter
             self.__filters = RedisFilter(settings=self.__settings)
-            tasks.append(asyncio.ensure_future(self.__scheduler.initialize_redis_pool()))
+            tasks.append(asyncio.ensure_future(self.__filters.initialize_redis_pool()))
 
         if not self.__downloader_middlewares:
             self.__downloader_middlewares = []
