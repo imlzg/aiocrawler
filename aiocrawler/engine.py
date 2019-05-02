@@ -94,29 +94,29 @@ class Engine(object):
         :param request: Request
         :param data: Response or Exception
         """
-        handled_data = None
+        processed_data = None
 
         if isinstance(data, Exception):
 
             for downloader_middleware, _ in self.__downloader_middlewares:
-                handled_data = downloader_middleware.process_exception(request, data)
-                if handled_data:
+                processed_data = downloader_middleware.process_exception(request, data)
+                if processed_data:
                     break
 
-            if handled_data is None:
+            if processed_data is None:
                 err_callback = getattr(self.__spider, request['err_callback'])
-                handled_data = err_callback(request, data)
+                processed_data = err_callback(request, data)
 
         elif isinstance(data, Response):
             response = self.__spider.__handle__(request, data)
             for downloader_middleware, _ in self.__downloader_middlewares:
-                handled_data = downloader_middleware.process_response(request, response)
-                if handled_data:
-                    if isinstance(handled_data, Response):
-                        response = handled_data
+                processed_data = downloader_middleware.process_response(request, response)
+                if processed_data:
+                    if isinstance(processed_data, Response):
+                        response = processed_data
                     break
 
-            if isinstance(handled_data, Response) or not handled_data:
+            if isinstance(processed_data, Response) or not processed_data:
                 self.__crawled_count__ += 1
                 self.__logger.success('Crawled ({status}) <{method} {url}>',
                                       status=response.status,
@@ -126,16 +126,16 @@ class Engine(object):
 
                 response.meta = request['meta']
                 callback = getattr(self.__spider, request['callback'])
-                handled_data = callback(response)
+                processed_data = callback(response)
 
-        if not handled_data:
+        if not processed_data:
             return
 
-        if not isinstance(handled_data, Iterator) and not isinstance(handled_data, List):
-            handled_data = [handled_data]
+        if not isinstance(processed_data, Iterator) and not isinstance(processed_data, List):
+            processed_data = [processed_data]
 
         tasks = []
-        for one in handled_data:
+        for one in processed_data:
             if isinstance(one, Request):
                 tasks.append(asyncio.ensure_future(self.__scheduler.send_request(one)))
             elif isinstance(one, Item):
