@@ -20,8 +20,8 @@ class BaseSettings:
     MYSQL_PASSWORD = None
     MYSQL_DB = None
 
-    CONCURRENT_REQUESTS = 16
-    CONCURRENT_WORDS = 16
+    CONCURRENT_REQUESTS = 32
+    CONCURRENT_WORDS = 8
     DEFAULT_TIMEOUT = 20
     DEFAULT_HEADERS = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',

@@ -6,3 +6,4 @@ demo/
 .pypirc
 dist/
 aiocrawler.egg-info/
+test/

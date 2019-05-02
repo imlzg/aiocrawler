@@ -6,10 +6,13 @@
 import sys
 import argparse
 from pathlib import Path
-from pyclbr import readmodule
 from importlib import import_module
 from aiocrawler.settings import BaseSettings
 logger = BaseSettings.LOGGER
+
+current_dir = str(Path('').cwd())
+if current_dir not in sys.path:
+    sys.path.append(current_dir)
 
 
 def main():
@@ -26,35 +29,62 @@ def main():
         tmpl = SpiderTemplate(args.name)
         tmpl.gen_project()
     elif args.commands == "run" and args.name:
+        run_spider(args.name)
 
-        spider = get_module(args.name)
-        if not spider:
-            logger.error('The Spider name you provided is not found in this directory.')
-            return
-
-        try:
-            run_module = import_module('run')
-            run_module.run(spider)
-        except Exception as e:
-            logger.error(e)
-
-    elif args.commands == "output" and args.filename:
-        item_module = import_module('.items')
+    elif args.commands == "output":
+        output(filename=args.filename, item_name=args.item)
 
 
-def get_module(name: str, spider_module_name: str = 'spiders'):
+def output(filename: str = None, item_name: str = None):
+    item_class = None
+    from aiocrawler import Item, BaseSettings
+    from aiocrawler.extensions.exporters.redis_to_file import RedisToFile
 
-    module = None
+    item_subclasses = get_subclass(Item, 'items')
+    for sub in item_subclasses:
+        if item_name and vars(sub).get('item_name', None) == item_name or vars(sub).get('item_name', None):
+            item_class = sub()
+            break
+
+    settings_subclasses = get_subclass(BaseSettings, 'settings')
+    if len(settings_subclasses) and isinstance(item_class, Item):
+        settings = settings_subclasses[0]()
+
+        r = RedisToFile(settings, item_class, filename=filename)
+        r.run()
+
+
+def run_spider(name: str):
+    from aiocrawler import Spider
+    spider = None
+    subclasses = get_subclass(Spider, 'spiders')
+    for subclass in subclasses:
+        if vars(subclass).get('name', None) == name:
+            spider = subclass
+            break
+
+    if not spider:
+        logger.error('The Spider name you provided is not found in this directory.')
+        return
     try:
-        current_dir = str(Path('').cwd())
-        if current_dir not in sys.path:
-            sys.path.append(current_dir)
+        run_module = import_module('run')
+        run_module.run(spider)
+    except Exception as e:
+        logger.error(e)
 
-        spider_module = import_module(spider_module_name)
 
-        for module_name in readmodule(spider_module_name).keys():
-            module = getattr(spider_module, module_name)
-            if name == vars(module).get(name, ''):
-                return module
+def get_subclass(class_type: type, module: str, subclass_name: str = None):
+    try:
+        import_module(module)
     finally:
-        return module
+        pass
+    data = class_type.__subclasses__()
+
+    if subclass_name:
+        for sub_class in data:
+            if sub_class.__name__ == subclass_name:
+                data = sub_class
+                break
+
+    return data
+

@@ -4,7 +4,9 @@
 # PROJECT   : credit
 # File      : aio_downloader
 import traceback
+from yarl import URL
 from aiohttp import ClientSession
+from aiohttp_socks import SocksConnector
 from aiocrawler.response import Response
 from aiocrawler.downloaders.downloader import BaseDownloader
 from aiocrawler.settings import BaseSettings
@@ -15,7 +17,16 @@ class AioDownloader(BaseDownloader):
         BaseDownloader.__init__(self, settings)
 
     async def get_response(self, request):
-        session = ClientSession()
+        connector = None
+        proxy = None
+        if request['proxy']:
+            proxy_url = URL(request['proxy'])
+            if proxy_url.scheme in ['socks4', 'socks5']:
+                connector = SocksConnector.from_url(request['proxy'])
+            else:
+                proxy = request['proxy']
+
+        session = ClientSession(connector=connector)
         try:
             if request['cookies']:
                 session.cookie_jar.update_cookies(request['cookies'])
@@ -23,14 +34,14 @@ class AioDownloader(BaseDownloader):
             if request['method'] == 'GET':
                 resp = await session.get(request['url'],
                                          params=request['params'],
-                                         proxy=request['proxy'],
+                                         proxy=proxy,
                                          headers=request['headers'],
                                          timeout=request['timeout'],
                                          )
             else:
                 resp = await session.post(url=request['url'],
                                           data=request['params'],
-                                          proxy=request['proxy'],
+                                          proxy=proxy,
                                           headers=request['headers'],
                                           timeout=request['timeout'],
                                           )

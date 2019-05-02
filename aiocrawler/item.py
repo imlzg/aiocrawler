@@ -2,5 +2,5 @@
 
 
 class Item(dict):
-    pass
+    item_name: str = None
 

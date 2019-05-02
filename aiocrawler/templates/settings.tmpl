@@ -16,7 +16,7 @@ class $classname(BaseSettings):
     REDIS_PROJECT_NAME = '$project_name'
 
     CONCURRENT_REQUESTS = 32
-    CONCURRENT_WORDS = 32
+    CONCURRENT_WORDS = 16
     DEFAULT_TIMEOUT = 20
     DEFAULT_HEADERS = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -24,7 +24,7 @@ class $classname(BaseSettings):
     }
 
     DOWNLOAD_DALEY = 0
-    PROCESS_DALEY = 0.01
+    PROCESS_DALEY = 0
     DOWNLOADER_MIDDLEWARES = [
         ($middleware_name, 300),
 

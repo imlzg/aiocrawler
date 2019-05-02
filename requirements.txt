@@ -1,6 +1,8 @@
 aioredis
+aiofiles
 aiomysql
 aiohttp
+aiohttp-socks
 yarl
 loguru
 parsel
