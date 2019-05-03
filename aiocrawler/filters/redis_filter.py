@@ -3,22 +3,22 @@
 # Author    : kylin1020
 # PROJECT   : aiocrawler
 # File      : redis_filter
+from yarl import URL
 from re import findall
 from hashlib import sha1
-from yarl import URL
-from aiocrawler.item import Item
+from aiocrawler import Item
+from aiocrawler import Request
+from aiocrawler import BaseSettings
 from aiocrawler.filters.filter import BaseFilter
-from aiocrawler.settings import BaseSettings
-from aiocrawler.request import Request
 from aioredis import create_pool, ConnectionsPool
 
 
 class RedisFilter(BaseFilter):
 
-    def __init__(self, settings: BaseSettings):
+    def __init__(self, settings: BaseSettings, redis_pool: ConnectionsPool = None):
         BaseFilter.__init__(self, settings)
 
-        self.__redis_pool: ConnectionsPool = None
+        self.__redis_pool: ConnectionsPool = redis_pool
         self.__redis_filters_key = settings.REDIS_PROJECT_NAME + ':filters'
 
     async def initialize_redis_pool(self):

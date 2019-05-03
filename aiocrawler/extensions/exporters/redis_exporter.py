@@ -31,8 +31,9 @@ class RedisExporter(BaseExporter):
     async def get_redis_items(self, start: int, end: int):
         items = await self.redis_pool.execute('lrange', self.redis_items_key, start, end)
         count = len(items)
-        self.logger.debug(f'Got {count} items <{start}, {start + count}> from '
-                          f'The Redis Server <redis key: {self.redis_items_key}>')
+        self.logger.debug('Got {count} items <{start}, {end}> from '
+                          'The Redis Server <redis key: {redis_items_key}>',
+                          count=count, start=start, end=start + count, redis_items_key=self.redis_items_key)
         items = map(lambda x: pickle.loads(x), items)
         items = self.__filter_items(items)
         return items

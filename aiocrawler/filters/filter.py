@@ -1,8 +1,8 @@
 # coding: utf-8
-from aiocrawler import Request
 from typing import Union
-from aiocrawler import BaseSettings
 from aiocrawler import Item
+from aiocrawler import Request
+from aiocrawler import BaseSettings
 
 
 class BaseFilter(object):

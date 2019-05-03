@@ -12,8 +12,16 @@ class BaseSettings:
     logger.add('log/aio-crawler.log', format=fmt, rotation='10 MB')
     LOGGER = logger
 
+    PROJECT_NAME = None
+
     REDIS_URL = None
     REDIS_PROJECT_NAME = None
+
+    MONGO_HOST = None
+    MONGO_PORT = 27017
+    MONGO_DB = None
+    MONGO_USER = None
+    MONGO_PASSWORD = None
 
     MYSQL_HOST = 'localhost'
     MYSQL_USER = 'root'
@@ -29,7 +37,7 @@ class BaseSettings:
     }
 
     DOWNLOAD_DALEY = 0
-    PROCESS_DALEY = 0.01
+    PROCESS_DALEY = 0.1
 
     ALLOWED_CODES = []
 

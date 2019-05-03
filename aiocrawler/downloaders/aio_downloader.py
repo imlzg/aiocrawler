@@ -5,11 +5,11 @@
 # File      : aio_downloader
 import traceback
 from yarl import URL
+from aiocrawler import Response
 from aiohttp import ClientSession
+from aiocrawler import BaseSettings
 from aiohttp_socks import SocksConnector
-from aiocrawler.response import Response
 from aiocrawler.downloaders.downloader import BaseDownloader
-from aiocrawler.settings import BaseSettings
 
 
 class AioDownloader(BaseDownloader):

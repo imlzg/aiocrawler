@@ -32,12 +32,10 @@ class RedisToFile(RedisExporter):
     async def redis_to_csv(self):
         total_count = await self.get_total_count()
         batches = int(ceil(total_count / self.batch_size))
-        tasks = []
-
-        for batch in range(batches):
-            tasks.append(asyncio.ensure_future(
-                self.__save(batch * self.batch_size, (batch + 1) * self.batch_size)
-            ))
+        tasks = [
+            asyncio.ensure_future(self.__save(batch * self.batch_size, (batch + 1) * self.batch_size))
+            for batch in range(batches)
+        ]
         if len(tasks):
             headers = ','.join(self.__fields) + '\n'
             await self.__file.write(headers)

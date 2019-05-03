@@ -1,10 +1,10 @@
 # coding: utf-8
-from typing import Union, List
 from json import loads
 from parsel import Selector
-from aiocrawler import BaseSettings
-from aiocrawler import Request
-from aiocrawler import Response
+from typing import Union, List
+from aiocrawler.request import Request
+from aiocrawler.response import Response
+from aiocrawler.settings import BaseSettings
 
 
 class Spider(object):

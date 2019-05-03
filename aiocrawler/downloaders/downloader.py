@@ -1,8 +1,8 @@
 # coding: utf-8
-from aiocrawler import BaseSettings
 from typing import Union
 from aiocrawler import Request
 from aiocrawler import Response
+from aiocrawler import BaseSettings
 
 
 class BaseDownloader(object):

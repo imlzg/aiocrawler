@@ -3,8 +3,8 @@
 # Author    : kylin
 # PROJECT   : aiocrawler
 # File      : set_default_middleware
-from aiocrawler.settings import BaseSettings
-from aiocrawler.request import Request
+from aiocrawler import BaseSettings
+from aiocrawler import Request
 from aiocrawler.middlewares.middleware import BaseDownloaderMiddleware
 
 

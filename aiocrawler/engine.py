@@ -1,24 +1,23 @@
 # coding: utf-8
-import traceback
 import asyncio
 import signal
+import traceback
 from time import sleep
 from random import uniform
-from typing import List, Union, Iterator, Tuple
-from asyncio import AbstractEventLoop
 from aiocrawler import Item
 from aiocrawler import Field
 from aiocrawler import Request
-from aiocrawler import BaseFilter
-from aiocrawler import BaseSettings
-from aiocrawler import BaseScheduler
-from aiocrawler import BaseDownloaderMiddleware
 from aiocrawler import Response
 from aiocrawler import Spider
-from aiocrawler import BaseDownloader
-from aiocrawler.middlewares.user_agent_middleware import UserAgentMiddleware
-from aiocrawler.middlewares.set_default_middleware import SetDefaultRequestMiddleware
-from aiocrawler.middlewares.allowed_codes_middleware import AllowedCodesMiddleware
+from aiocrawler import BaseSettings
+from aiocrawler.filters import BaseFilter
+from aiocrawler.schedulers import BaseScheduler
+from typing import List, Union, Iterator, Tuple
+from aiocrawler.downloaders import BaseDownloader
+from aiocrawler.middlewares import UserAgentMiddleware
+from aiocrawler.middlewares import AllowedCodesMiddleware
+from aiocrawler.middlewares import BaseDownloaderMiddleware
+from aiocrawler.middlewares import SetDefaultRequestMiddleware
 
 
 class Engine(object):
@@ -26,7 +25,7 @@ class Engine(object):
     The Engine schedules all components.
     """
     def __init__(self, spider: Spider,
-                 settings: BaseSettings = None,
+                 settings: BaseSettings,
                  downloader_middlewares: List[Tuple[BaseDownloaderMiddleware, int]] = None,
                  filters: BaseFilter = None,
                  scheduler: BaseScheduler = None,
@@ -46,34 +45,37 @@ class Engine(object):
         self.__crawled_count__ = 0
         self.__item_count__ = 0
         self.__log_interval__ = 30
-        self.__loop: AbstractEventLoop = None
+        self.__loop: asyncio.AbstractEventLoop = None
 
         self.__signal_int_count = 0
         self.__is_stop = False
+        self.__listen_interval__ = 1
 
-    async def __process_run(self):
+        self.__concurrent_count__ = self.__settings.CONCURRENT_REQUESTS + self.__settings.CONCURRENT_WORDS
+
+    async def initialize(self):
         """
         Initialize all necessary components.
         """
         tasks = []
 
-        if not self.__settings:
-            self.__settings = BaseSettings()
-
         if not self.__downloader:
             from aiocrawler.downloaders.aio_downloader import AioDownloader
             self.__downloader = AioDownloader(self.__settings)
 
+        redis_pool = None
         if not self.__scheduler:
             from aiocrawler.schedulers.redis_scheduler import RedisScheduler
             self.__scheduler = RedisScheduler(settings=self.__settings)
-            tasks.append(asyncio.ensure_future(self.__scheduler.initialize_redis_pool()))
+            await self.__scheduler.initialize_redis_pool()
+            redis_pool = self.__scheduler.redis_pool
 
         if not self.__filters:
             # Use Redis Filters by default.
             from aiocrawler.filters.redis_filter import RedisFilter
-            self.__filters = RedisFilter(settings=self.__settings)
-            tasks.append(asyncio.ensure_future(self.__filters.initialize_redis_pool()))
+            if redis_pool is None:
+                await self.__scheduler.initialize_redis_pool()
+            self.__filters = RedisFilter(settings=self.__settings, redis_pool=redis_pool)
 
         if not self.__downloader_middlewares:
             self.__downloader_middlewares = []
@@ -85,8 +87,6 @@ class Engine(object):
         ]
         self.__downloader_middlewares.extend(default_middlewares)
         self.__downloader_middlewares = sorted(self.__downloader_middlewares, key=lambda x: x[1])
-        if len(tasks):
-            await asyncio.wait(tasks)
 
     async def handle_response(self, request: Request, data: Union[Response, Exception, None]):
         """
@@ -169,17 +169,16 @@ class Engine(object):
         """
         try:
             while True:
+                if self.__is_stop:
+                    break
 
-                sleep(self.__settings.PROCESS_DALEY)
+                await asyncio.sleep(self.__settings.PROCESS_DALEY)
                 word = await self.__scheduler.get_word()
                 if word:
                     self.__logger.debug('Making Request from word <word: {word}>'.format(word=word))
                     request = self.__spider.make_request(word)
                     if request:
                         await self.__scheduler.send_request(request)
-
-        except asyncio.CancelledError:
-            pass
         except Exception as e:
             self.__logger.error(e)
             self.__logger.error(traceback.format_exc(limit=10))
@@ -190,6 +189,10 @@ class Engine(object):
         """
         try:
             while True:
+                if self.__is_stop:
+                    break
+
+                sleep(self.__settings.PROCESS_DALEY)
                 request = await self.__scheduler.get_request()
                 if request:
                     request = await self.__filters.filter_request(request)
@@ -200,9 +203,6 @@ class Engine(object):
                         sleep(self.__settings.DOWNLOAD_DALEY * uniform(0.5, 1.5))
                         data = await self.__downloader.get_response(request)
                         await self.handle_response(request, data)
-
-        except asyncio.CancelledError:
-            pass
         except Exception as e:
             self.__logger.error(e)
             self.__logger.error(traceback.format_exc(limit=10))
@@ -212,7 +212,10 @@ class Engine(object):
         Log crawled information.
         """
         while True:
+            if self.__is_stop:
+                break
 
+            sleep(self.__settings.PROCESS_DALEY)
             request_count = await self.__scheduler.get_total_request()
             self.__logger.debug('Total Crawled {crawled_count} Pages, {item_count} Items; '
                                 'Total {request_count} Requests in The {scheduler_name}',
@@ -224,17 +227,28 @@ class Engine(object):
 
     def signal_int(self, signum, frame):
         self.__signal_int_count += 1
-        self.__logger.debug('Received SIGNAL INT {times} times.', times=self.__signal_int_count)
-        if self.__signal_int_count >= 2:
-            self.__logger.debug('Received SIGNAL INT over 2 times, closing the aiocrawler by force...')
-            tasks = asyncio.Task.all_tasks()
-            for task in tasks:
-                task.cancel()
-            asyncio.ensure_future(self.stop_loop())
+        self.__logger.debug('Received SIGNAL INT, closing the Crawler...')
+        self.__is_stop = True
 
     async def stop_loop(self):
-        if self.__loop:
-            self.__loop.stop()
+        self.__loop.stop()
+
+    async def main(self):
+        tasks = []
+        for _ in range(self.__settings.CONCURRENT_WORDS):
+            tasks.append(asyncio.ensure_future(self.handle_word()))
+
+        for _ in range(self.__settings.CONCURRENT_REQUESTS):
+            tasks.append((asyncio.ensure_future(self.handle_request())))
+
+        tasks.append(self.__log__())
+        await asyncio.wait(tasks)
+
+    def close_crawler(self):
+        tasks = asyncio.Task.all_tasks(loop=self.__loop)
+        for task in tasks:
+            task.cancel()
+        asyncio.ensure_future(self.stop_loop())
 
     def run(self):
         """
@@ -245,17 +259,12 @@ class Engine(object):
         self.__loop = asyncio.get_event_loop()
         try:
             self.__logger.debug('Initializing The Crawler...')
-            self.__loop.run_until_complete(self.__process_run())
-
-            for _ in range(self.__settings.CONCURRENT_WORDS):
-                asyncio.ensure_future(self.handle_word())
-
-            for _ in range(self.__settings.CONCURRENT_REQUESTS):
-                asyncio.ensure_future(self.handle_request())
-
-            asyncio.ensure_future(self.__log__())
+            self.__loop.run_until_complete(self.initialize())
             self.__logger.debug('The Crawler Initialized')
 
+            self.__loop.run_until_complete(self.main())
+            self.close_crawler()
             self.__loop.run_forever()
         finally:
             self.__loop.close()
+        self.__logger.debug('The Crawler was closed')

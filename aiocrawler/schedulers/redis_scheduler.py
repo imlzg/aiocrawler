@@ -3,12 +3,12 @@
 # Author    : kylin1020
 # PROJECT   : aiocrawler
 # File      : redis_scheduler
-from aiocrawler.schedulers.scheduler import BaseScheduler
-from aiocrawler.request import Request
-from aiocrawler.item import Item
-from aiocrawler.settings import BaseSettings
-from aioredis import create_pool, ConnectionsPool
 import pickle
+from aiocrawler import Item
+from aiocrawler import Request
+from aiocrawler import BaseSettings
+from aioredis import create_pool, ConnectionsPool
+from aiocrawler.schedulers.scheduler import BaseScheduler
 
 
 class RedisScheduler(BaseScheduler):

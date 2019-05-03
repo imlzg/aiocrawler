@@ -3,9 +3,9 @@
 # Author    : kylin
 # PROJECT   : aiocrawler
 # File      : allowed_code_middleware
-from aiocrawler.settings import BaseSettings
-from aiocrawler.request import Request
-from aiocrawler.response import Response
+from aiocrawler import BaseSettings
+from aiocrawler import Request
+from aiocrawler import Response
 from aiocrawler.middlewares.middleware import BaseDownloaderMiddleware
 
 

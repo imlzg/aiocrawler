@@ -3,9 +3,9 @@
 # Author    : kylin
 # PROJECT   : aiocrawler
 # File      : user_agent_middleware
+from aiocrawler import BaseSettings
+from aiocrawler import Request
 from aiocrawler.middlewares.middleware import BaseDownloaderMiddleware
-from aiocrawler.settings import BaseSettings
-from aiocrawler.request import Request
 
 
 class UserAgentMiddleware(BaseDownloaderMiddleware):

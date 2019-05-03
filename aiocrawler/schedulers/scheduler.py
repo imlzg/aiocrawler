@@ -1,8 +1,7 @@
 # coding: utf-8
-
-from aiocrawler.request import Request
-from aiocrawler.item import Item
-from aiocrawler.settings import BaseSettings
+from aiocrawler import Item
+from aiocrawler import Request
+from aiocrawler import BaseSettings
 
 
 class BaseScheduler(object):
