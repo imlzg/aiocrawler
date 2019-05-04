@@ -14,6 +14,7 @@ class BaseSettings:
 
     PROJECT_NAME = None
 
+    ENABLE_REDIS_SETTINGS = False
     REDIS_URL = None
     REDIS_PROJECT_NAME = None
 

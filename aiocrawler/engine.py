@@ -15,7 +15,6 @@ from aiocrawler.schedulers import BaseScheduler
 from typing import List, Union, Iterator, Tuple
 from aiocrawler.downloaders import BaseDownloader
 from aiocrawler.middlewares import UserAgentMiddleware
-from aiocrawler.middlewares import AllowedCodesMiddleware
 from aiocrawler.middlewares import BaseDownloaderMiddleware
 from aiocrawler.middlewares import SetDefaultRequestMiddleware
 
@@ -24,6 +23,7 @@ class Engine(object):
     """
     The Engine schedules all components.
     """
+
     def __init__(self, spider: Spider,
                  settings: BaseSettings,
                  downloader_middlewares: List[Tuple[BaseDownloaderMiddleware, int]] = None,
@@ -51,14 +51,13 @@ class Engine(object):
         self.__is_stop = False
         self.__listen_interval__ = 1
 
-        self.__concurrent_count__ = self.__settings.CONCURRENT_REQUESTS + self.__settings.CONCURRENT_WORDS
+        self.__concurrent_count__ = self.__settings.CONCURRENT_REQUESTS + \
+            self.__settings.CONCURRENT_WORDS
 
     async def initialize(self):
         """
         Initialize all necessary components.
         """
-        tasks = []
-
         if not self.__downloader:
             from aiocrawler.downloaders.aio_downloader import AioDownloader
             self.__downloader = AioDownloader(self.__settings)
@@ -75,7 +74,8 @@ class Engine(object):
             from aiocrawler.filters.redis_filter import RedisFilter
             if redis_pool is None:
                 await self.__scheduler.initialize_redis_pool()
-            self.__filters = RedisFilter(settings=self.__settings, redis_pool=redis_pool)
+            self.__filters = RedisFilter(
+                settings=self.__settings, redis_pool=redis_pool)
 
         if not self.__downloader_middlewares:
             self.__downloader_middlewares = []
@@ -83,10 +83,10 @@ class Engine(object):
         default_middlewares = [
             (SetDefaultRequestMiddleware(self.__settings), 1),
             (UserAgentMiddleware(self.__settings), 2),
-            (AllowedCodesMiddleware(self.__settings), 3),
         ]
         self.__downloader_middlewares.extend(default_middlewares)
-        self.__downloader_middlewares = sorted(self.__downloader_middlewares, key=lambda x: x[1])
+        self.__downloader_middlewares = sorted(
+            self.__downloader_middlewares, key=lambda x: x[1])
 
     async def handle_response(self, request: Request, data: Union[Response, Exception, None]):
         """
@@ -99,7 +99,8 @@ class Engine(object):
         if isinstance(data, Exception):
 
             for downloader_middleware, _ in self.__downloader_middlewares:
-                processed_data = downloader_middleware.process_exception(request, data)
+                processed_data = downloader_middleware.process_exception(
+                    request, data)
                 if processed_data:
                     break
 
@@ -110,7 +111,8 @@ class Engine(object):
         elif isinstance(data, Response):
             response = self.__spider.__handle__(request, data)
             for downloader_middleware, _ in self.__downloader_middlewares:
-                processed_data = downloader_middleware.process_response(request, response)
+                processed_data = downloader_middleware.process_response(
+                    request, response)
                 if processed_data:
                     if isinstance(processed_data, Response):
                         response = processed_data
@@ -137,7 +139,8 @@ class Engine(object):
         tasks = []
         for one in processed_data:
             if isinstance(one, Request):
-                tasks.append(asyncio.ensure_future(self.__scheduler.send_request(one)))
+                tasks.append(asyncio.ensure_future(
+                    self.__scheduler.send_request(one)))
             elif isinstance(one, Item):
                 self.__item_count__ += 1
 
@@ -147,7 +150,8 @@ class Engine(object):
 
                 self.__logger.success('Crawled from <{method} {url}> \n {item}',
                                       method=request['method'], url=request['url'], item=item_copy)
-                tasks.append(asyncio.ensure_future(self.__item_filter_and_send__(item_copy)))
+                tasks.append(asyncio.ensure_future(
+                    self.__item_filter_and_send__(item_copy)))
 
         if len(tasks):
             await asyncio.wait(tasks)
@@ -175,7 +179,8 @@ class Engine(object):
                 await asyncio.sleep(self.__settings.PROCESS_DALEY)
                 word = await self.__scheduler.get_word()
                 if word:
-                    self.__logger.debug('Making Request from word <word: {word}>'.format(word=word))
+                    self.__logger.debug(
+                        'Making Request from word <word: {word}>'.format(word=word))
                     request = self.__spider.make_request(word)
                     if request:
                         await self.__scheduler.send_request(request)

@@ -16,7 +16,8 @@ class Spider(object):
         self.logger = self.setting.LOGGER
 
     def make_request(self, word: str) -> Union[List[Request], Request]:
-        raise NotImplementedError('{} make_request method is not define'.format(self.__class__.__name__))
+        raise NotImplementedError(
+            '{} make_request method is not define'.format(self.__class__.__name__))
 
     def parse(self, response: Response):
         pass

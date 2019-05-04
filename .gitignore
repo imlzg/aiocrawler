@@ -7,3 +7,4 @@ demo/
 dist/
 aiocrawler.egg-info/
 test/
+aiocrawler/dashboard
