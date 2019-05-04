@@ -2,21 +2,17 @@
 import asyncio
 import signal
 import traceback
-from time import sleep
 from random import uniform
-from aiocrawler import Item
-from aiocrawler import Field
-from aiocrawler import Request
-from aiocrawler import Response
-from aiocrawler import Spider
-from aiocrawler import BaseSettings
-from aiocrawler.filters import BaseFilter
-from aiocrawler.schedulers import BaseScheduler
-from typing import List, Union, Iterator, Tuple
+from time import sleep
+from typing import Iterator, List, Tuple, Union
+
+from aiocrawler import BaseSettings, Field, Item, Request, Response, Spider
 from aiocrawler.downloaders import BaseDownloader
-from aiocrawler.middlewares import UserAgentMiddleware
-from aiocrawler.middlewares import BaseDownloaderMiddleware
-from aiocrawler.middlewares import SetDefaultRequestMiddleware
+from aiocrawler.filters import BaseFilter
+from aiocrawler.middlewares import (BaseDownloaderMiddleware,
+                                    SetDefaultRequestMiddleware,
+                                    UserAgentMiddleware)
+from aiocrawler.schedulers import BaseScheduler
 
 
 class Engine(object):
