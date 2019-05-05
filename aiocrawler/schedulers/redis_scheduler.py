@@ -3,6 +3,7 @@
 # Author    : kylin1020
 # PROJECT   : aiocrawler
 # File      : redis_scheduler
+import os
 import pickle
 from aiocrawler import Item
 from aiocrawler import Request
@@ -21,8 +22,9 @@ class RedisScheduler(BaseScheduler):
         self.__redis_items_key = self.settings.REDIS_PROJECT_NAME + ':items'
 
     async def initialize_redis_pool(self):
-        if not self.settings.REDIS_URL:
-            raise ValueError('REDIS_URL are not configured in {setting_name}'.format(
+        redis_url = self.settings.REDIS_URL or os.environ.get('REDIS_URL', None)
+        if not redis_url:
+            raise ValueError('REDIS_URL are not configured in {setting_name} or the Environmental variables'.format(
                 setting_name=self.settings.__class__.__name__))
         else:
             self.redis_pool = await create_pool(self.settings.REDIS_URL)

@@ -3,12 +3,15 @@
 # Author    : kylin
 # PROJECT   : aiocrawler
 # File      : aiocrawler
+import argparse
+import os
 import sys
 import traceback
-import argparse
-from pathlib import Path
 from importlib import import_module
+from pathlib import Path
+
 from aiocrawler import BaseSettings
+
 logger = BaseSettings.LOGGER
 
 current_dir = str(Path('').cwd())
@@ -58,7 +61,8 @@ def output(project_name: str,
             break
 
     if output_type is None:
-        if vars(settings).get('MONGO_HOST', None):
+        mongo_host = settings.MONGO_HOST or os.environ.get('MONGO_HOST', None)
+        if mongo_host:
             output_type = 'mongo'
         else:
             output_type = 'csv'
@@ -127,6 +131,4 @@ def get_subclass(class_type: type, module: str, subclass_name: str = None):
             if sub_class.__name__ == subclass_name:
                 data = sub_class
                 break
-
     return data
-

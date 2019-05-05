@@ -69,7 +69,7 @@ class Engine(object):
             # Use Redis Filters by default.
             from aiocrawler.filters.redis_filter import RedisFilter
             if redis_pool is None:
-                await self.__scheduler.initialize_redis_pool()
+                await self.__filters.initialize_redis_pool()
             self.__filters = RedisFilter(
                 settings=self.__settings, redis_pool=redis_pool)
 

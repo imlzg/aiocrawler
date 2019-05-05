@@ -3,12 +3,13 @@
 # Author    : kylin
 # PROJECT   : aiocrawler
 # File      : redis_exporter
-import aioredis
 import asyncio
+import os
 import pickle
 from typing import Iterable, List
-from aiocrawler import Item
-from aiocrawler import BaseSettings
+
+import aioredis
+from aiocrawler import BaseSettings, Item
 from aiocrawler.extensions.exporters.exporter import BaseExporter
 
 
@@ -20,8 +21,9 @@ class RedisExporter(BaseExporter):
         self.redis_items_key = self.settings.REDIS_PROJECT_NAME + ':items'
 
     async def initialize_redis(self):
-        if not self.settings.REDIS_URL:
-            raise ValueError('REDIS_URL is not configured in {setting_name}'.format(
+        redis_url = self.settings.REDIS_URL or os.environ.get('REDIS_URL', None)
+        if not redis_url:
+            raise ValueError('REDIS_URL is not configured in {setting_name} or the Environmental variables'.format(
                 setting_name=self.settings.__class__.__name__))
         else:
             self.logger.debug('Connecting to The Redis Server...')

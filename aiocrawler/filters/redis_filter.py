@@ -3,6 +3,7 @@
 # Author    : kylin1020
 # PROJECT   : aiocrawler
 # File      : redis_filter
+import os
 from yarl import URL
 from re import findall
 from hashlib import sha1
@@ -22,8 +23,9 @@ class RedisFilter(BaseFilter):
         self.__redis_filters_key = settings.REDIS_PROJECT_NAME + ':filters'
 
     async def initialize_redis_pool(self):
-        if not self.settings.REDIS_URL:
-            raise ValueError('REDIS_URL is not configured in {setting_name}'.format(
+        redis_url = self.settings.REDIS_URL or os.environ.get('REDIS_URL', None)
+        if not redis_url:
+            raise ValueError('REDIS_URL is not configured in {setting_name} or the Environmental variables'.format(
                 setting_name=self.settings.__class__.__name__))
         else:
             self.__redis_pool = await create_pool(self.settings.REDIS_URL)

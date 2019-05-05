@@ -38,7 +38,10 @@ class BaseSettings:
     }
 
     DOWNLOAD_DALEY = 0
-    PROCESS_DALEY = 0.1
+    PROCESS_DALEY = 0.05
+
+    DASHBOARD_USER = None
+    DASHBOARD_PASSWORD = None
 
     ALLOWED_CODES = []
 
