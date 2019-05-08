@@ -19,40 +19,40 @@ class AioDownloader(BaseDownloader):
     async def get_response(self, request):
         connector = None
         proxy = None
-        if request['proxy']:
-            proxy_url = URL(request['proxy'])
+        if request.proxy:
+            proxy_url = URL(request.proxy)
             if proxy_url.scheme in ['socks4', 'socks5']:
-                connector = SocksConnector.from_url(request['proxy'])
+                connector = SocksConnector.from_url(request.proxy)
             else:
-                proxy = request['proxy']
+                proxy = request.proxy
 
         session = ClientSession(connector=connector)
         try:
-            if request['cookies']:
-                session.cookie_jar.update_cookies(request['cookies'])
+            if request.cookies:
+                session.cookie_jar.update_cookies(request.cookies)
 
-            if request['method'] == 'GET':
-                resp = await session.get(request['url'],
-                                         params=request['params'],
+            if request.method == 'GET':
+                resp = await session.get(request.url,
+                                         params=request.params,
                                          proxy=proxy,
-                                         headers=request['headers'],
-                                         timeout=request['timeout'],
+                                         headers=request.headers,
+                                         timeout=request.timeout,
                                          )
             else:
-                resp = await session.post(url=request['url'],
-                                          data=request['params'],
+                resp = await session.post(url=request.url,
+                                          data=request.params,
                                           proxy=proxy,
-                                          headers=request['headers'],
-                                          timeout=request['timeout'],
+                                          headers=request.headers,
+                                          timeout=request.timeout,
                                           )
 
             status = resp.status
-            text = await resp.text(encoding=request['encoding'])
+            text = await resp.text(encoding=request.encoding)
             cookies = resp.cookies
 
             response = Response(text=text, status=status, cookies=cookies)
-            if request['cookies']:
-                response.cookies.update(request['cookies'])
+            if request.cookies:
+                response.cookies.update(request.cookies)
 
             return response
 
@@ -62,4 +62,3 @@ class AioDownloader(BaseDownloader):
 
         finally:
             await session.close()
-

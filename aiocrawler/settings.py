@@ -40,9 +40,12 @@ class BaseSettings:
     DOWNLOAD_DALEY = 0
     PROCESS_DALEY = 0.05
 
+    AIOJOBS_LIMIT = None
+
     DASHBOARD_USER = None
     DASHBOARD_PASSWORD = None
 
     ALLOWED_CODES = []
 
     DOWNLOADER_MIDDLEWARES = []
+

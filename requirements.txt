@@ -3,6 +3,9 @@ aiofiles
 aiomysql
 aiohttp
 aiohttp-socks
+aiohttp-session
+aiojobs
 yarl
 loguru
 parsel
+ujson

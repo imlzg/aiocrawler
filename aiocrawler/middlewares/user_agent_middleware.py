@@ -5,14 +5,14 @@
 # File      : user_agent_middleware
 from aiocrawler import BaseSettings
 from aiocrawler import Request
-from aiocrawler.middlewares.middleware import BaseDownloaderMiddleware
+from aiocrawler.middlewares.middleware import BaseMiddleware
 
 
-class UserAgentMiddleware(BaseDownloaderMiddleware):
+class UserAgentMiddleware(BaseMiddleware):
     def __init__(self, settings: BaseSettings):
-        BaseDownloaderMiddleware.__init__(self, settings)
+        BaseMiddleware.__init__(self, settings)
         from fake_useragent import UserAgent
         self.__ua = UserAgent()
 
     def process_request(self, request: Request):
-        request['headers']['User-Agent'] = self.__ua.random
+        request.headers['User-Agent'] = self.__ua.random

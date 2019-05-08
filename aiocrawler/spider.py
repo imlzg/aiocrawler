@@ -1,16 +1,16 @@
 # coding: utf-8
-from ujson import loads
 from typing import List, Union
 
 from aiocrawler.request import Request
 from aiocrawler.response import Response
 from aiocrawler.settings import BaseSettings
 from parsel import Selector
+from ujson import loads
 
 
 class Spider(object):
     name: str = None
-    words: List[str] = None
+    words: List[Union[float, str, int, bool]] = None
 
     def __init__(self, settings: BaseSettings):
         self.setting = settings

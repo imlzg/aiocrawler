@@ -1,14 +1,14 @@
 # coding: utf-8
 from aiocrawler import Request
-from aiocrawler import BaseSettings
 from aiocrawler import Response
+from aiocrawler import BaseSettings
 from typing import Union
 
 
-class BaseDownloaderMiddleware(object):
+class BaseMiddleware(object):
     def __init__(self, settings: BaseSettings):
         self.settings = settings
-        self.logger = self.settings.LOGGER
+        self.logger = settings.LOGGER
 
     def process_request(self, request: Request):
         pass

@@ -45,7 +45,7 @@ class RedisScheduler(BaseScheduler):
         resp = await self.redis_pool.execute('lpush', self.__redis_requests_key,
                                              pickle.dumps(request))
         if resp == 0:
-            self.logger.error('Send <Request> Failed <url: {url}> to redis server', url=request['url'])
+            self.logger.error('Send <Request> Failed <url: {url}> to redis server', url=request.url)
 
     async def send_item(self, item: Item):
         await self.redis_pool.execute('lpush', self.__redis_items_key, pickle.dumps(item))

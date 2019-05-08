@@ -16,7 +16,16 @@ setup(
     license="MIT",
     packages=find_packages(),
     package_data={"": ["*.py", "*.tmpl"]},
-    install_requires=["aiohttp", "aioredis", "yarl", "parsel", "loguru", "ujson", ],
+    install_requires=["aiohttp",
+                      "aioredis",
+                      "yarl",
+                      "parsel",
+                      "loguru",
+                      "ujson",
+                      "aiohttp-jinja2",
+                      "aiohttp-session",
+                      "aiojobs"
+                      ],
     entry_points={"console_scripts": [
         "aiocrawler = aiocrawler.commands:main"
     ]},
