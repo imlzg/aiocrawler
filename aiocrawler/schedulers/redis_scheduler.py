@@ -3,31 +3,23 @@
 # Author    : kylin1020
 # PROJECT   : aiocrawler
 # File      : redis_scheduler
-import os
 import pickle
 from aiocrawler import Item
 from aiocrawler import Request
 from aiocrawler import BaseSettings
-from aioredis import create_pool, ConnectionsPool
+from aiocrawler.extensions import Redis
+from aioredis import ConnectionsPool
 from aiocrawler.schedulers.scheduler import BaseScheduler
 
 
-class RedisScheduler(BaseScheduler):
-    def __init__(self, settings: BaseSettings):
+class RedisScheduler(BaseScheduler, Redis):
+    def __init__(self, settings: BaseSettings, redis_pool: ConnectionsPool = None):
         BaseScheduler.__init__(self, settings)
+        Redis.__init__(self, settings, redis_pool)
 
-        self.redis_pool: ConnectionsPool = None
         self.__redis_words_key = self.settings.REDIS_PROJECT_NAME + ':words'
         self.__redis_requests_key = self.settings.REDIS_PROJECT_NAME + ':requests'
         self.__redis_items_key = self.settings.REDIS_PROJECT_NAME + ':items'
-
-    async def initialize_redis_pool(self):
-        redis_url = self.settings.REDIS_URL or os.environ.get('REDIS_URL', None)
-        if not redis_url:
-            raise ValueError('REDIS_URL are not configured in {setting_name} or the Environmental variables'.format(
-                setting_name=self.settings.__class__.__name__))
-        else:
-            self.redis_pool = await create_pool(self.settings.REDIS_URL)
 
     async def get_request(self):
         request = await self.redis_pool.execute('lpop', self.__redis_requests_key)

@@ -115,8 +115,8 @@ def run_spider(name: str):
     try:
         run_module = import_module('run')
         run_module.run(spider)
-    except Exception as e:
-        logger.error(traceback.format_exc(limit=10))
+    finally:
+        pass
 
 
 def get_subclass(class_type: type, module: str, subclass_name: str = None):

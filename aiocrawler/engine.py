@@ -44,7 +44,6 @@ class Engine(object):
         self.__crawled_count__ = 0
         self.__item_count__ = 0
         self.__log_interval__ = 30
-        self.__loop: asyncio.AbstractEventLoop = None
 
         self.__signal_int_count = 0
         self.__is_close = False
@@ -54,14 +53,10 @@ class Engine(object):
         self.__pre_tasks: List[Tuple[FunctionType, Tuple[Any], Dict[str, Any]]] = []
         self.__completed_tasks: List[Tuple[FunctionType, Tuple[Any], Dict[str, Any]]] = []
 
-    def add_pre_task(self, target, args=(), kwargs=None):
-        if kwargs is None:
-            kwargs = {}
+    def add_pre_task(self, target, *args, **kwargs):
         self.__pre_tasks.append((target, args, kwargs))
 
-    def add_completed_task(self, target, args=(), kwargs=None):
-        if kwargs is None:
-            kwargs = {}
+    def add_completed_task(self, target, *args, **kwargs):
         self.__completed_tasks.append((target, args, kwargs))
 
     async def __run_task(self, target, *args, **kwargs):
@@ -86,26 +81,29 @@ class Engine(object):
 
         if not self.scheduler:
             if self.settings.REDIS_URL:
-                from aiocrawler.schedulers.redis_scheduler import RedisScheduler
+                from aiocrawler.schedulers import RedisScheduler
                 self.scheduler = RedisScheduler(settings=self.settings)
                 await self.scheduler.initialize_redis_pool()
 
                 if not self.filters:
-                    from aiocrawler.filters.redis_filter import RedisFilter
+                    from aiocrawler.filters import RedisFilter
                     self.filters = RedisFilter(self.settings, redis_pool=self.scheduler.redis_pool)
 
+                self.add_completed_task(self.scheduler.close_redis_pool)
+
             else:
-                from aiocrawler.schedulers.memory_scheduler import MemoryScheduler
+                from aiocrawler.schedulers import MemoryScheduler
                 self.scheduler = MemoryScheduler(self.settings, self.spider)
 
         if not self.filters:
             if self.settings.REDIS_URL:
-                from aiocrawler.filters.redis_filter import RedisFilter
+                from aiocrawler.filters import RedisFilter
                 self.filters = RedisFilter(self.settings, redis_pool=self.scheduler.redis_pool)
                 await self.filters.initialize_redis_pool()
+                self.add_completed_task(self.filters.close_redis_pool)
 
             else:
-                from aiocrawler.filters.memory_filter import MemoryFilter
+                from aiocrawler.filters import MemoryFilter
                 self.filters = MemoryFilter(self.settings)
 
         if self.__middlewares is None:
@@ -324,16 +322,25 @@ class Engine(object):
         for target, args, kwargs in self.__completed_tasks:
             await self.__run_task(target, *args, **kwargs)
 
+    async def test(self):
+        self.logger.error('test')
+
     def run(self):
         signal.signal(signal.SIGINT, self.__signal_int)
 
         try:
             import uvloop
             asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+        except:
+            pass
         finally:
             loop = asyncio.get_event_loop()
             try:
                 loop.run_until_complete(self._main())
             finally:
+                for task in asyncio.Task.all_tasks(loop):
+                    task.cancel()
+                loop.stop()
+                loop.run_forever()
                 loop.close()
             self.logger.debug('The Crawler was closed')

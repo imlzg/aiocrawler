@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="aiocrawler",
-    version="1.20",
+    version="1.21",
     keywords=["spider", "asynchronous", "crawler", "distributed"],
     author="kylin1020",
     author_email="kylin0521@gmail.com",
