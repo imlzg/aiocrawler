@@ -34,18 +34,19 @@ class BaseSettings:
     DEFAULT_TIMEOUT = 20
     DEFAULT_HEADERS = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en',
+        'Accept-Language': 'zh-CN',
     }
 
     DOWNLOAD_DALEY = 0
     PROCESS_DALEY = 0.05
 
-    AIOJOBS_LIMIT = None
+    AIOJOBS_LIMIT = 10000
+    AIOJOBS_CLOSED_TIMEOUT = 0.1
 
     DASHBOARD_USER = None
     DASHBOARD_PASSWORD = None
 
     ALLOWED_CODES = []
 
-    DOWNLOADER_MIDDLEWARES = []
+    MIDDLEWARES = []
 

@@ -6,8 +6,6 @@ from aiocrawler.middlewares.middleware import BaseMiddleware
 
 
 class AioProxyMiddleware(BaseMiddleware):
-    def __init__(self, settings: BaseSettings):
-        BaseMiddleware.__init__(self, settings)
 
     async def process_request(self, request: Request):
         pass

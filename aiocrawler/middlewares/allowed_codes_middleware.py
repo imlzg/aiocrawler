@@ -3,15 +3,12 @@
 # Author    : kylin
 # PROJECT   : aiocrawler
 # File      : allowed_code_middleware
-from aiocrawler import BaseSettings
 from aiocrawler import Request
 from aiocrawler import Response
 from aiocrawler.middlewares.middleware import BaseMiddleware
 
 
 class AllowedCodesMiddleware(BaseMiddleware):
-    def __init__(self, settings: BaseSettings):
-        BaseMiddleware.__init__(self, settings)
 
     def process_response(self, request: Request, response: Response):
         if not 200 <= response.status <= 301 and response.status not in self.settings.ALLOWED_CODES:

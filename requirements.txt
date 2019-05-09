@@ -9,3 +9,5 @@ yarl
 loguru
 parsel
 ujson
+jinja2
+cryptography

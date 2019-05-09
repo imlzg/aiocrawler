@@ -9,12 +9,8 @@ from settings import $settings_name
 def run(spider_module):
     settings = $settings_name()
     spider = spider_module(settings)
-    middlewares = [
-        (middleware(settings), value) for middleware, value in settings.DOWNLOADER_MIDDLEWARES
-    ]
     engine = Engine(
         spider=spider,
-        settings=settings,
-        downloader_middlewares=middlewares
+        settings=settings
     )
     engine.run()

@@ -17,6 +17,7 @@ class Request(dict):
                  err_callback=None
                  ):
         dict.__init__(self)
+        self['placeholder'] = None
 
         self.url = url
         self.method = method if method in ['GET', 'POST'] else 'GET'

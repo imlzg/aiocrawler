@@ -57,7 +57,7 @@ class RedisToFile(RedisExporter):
         self.__file = await aiofiles.open(self.__filename, 'w')
         await self.initialize_redis()
         await self.redis_to_csv()
-        await self.__file.close()
+        await self.__file.shutdown_task()
         self.redis_pool.close()
         await self.redis_pool.wait_closed()
 

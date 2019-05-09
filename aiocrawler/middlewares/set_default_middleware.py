@@ -9,8 +9,6 @@ from aiocrawler.middlewares.middleware import BaseMiddleware
 
 
 class SetDefaultRequestMiddleware(BaseMiddleware):
-    def __init__(self, settings: BaseSettings):
-        BaseMiddleware.__init__(self, settings)
 
     def process_request(self, request: Request):
         if request.timeout is None:

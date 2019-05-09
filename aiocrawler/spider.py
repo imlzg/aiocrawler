@@ -24,12 +24,12 @@ class Spider(object):
         pass
 
     def __handle__(self, request: Request, response: Response) -> Response:
-        if request['handle_way'] == 'json':
+        if request.handle_way == 'json':
             try:
                 response.json = loads(response.text)
             except Exception as e:
                 self.logger.error(e)
-        elif request['handle_way'] == 'selector':
+        elif request.handle_way == 'selector':
             response.selector = Selector(text=response.text)
 
         return response

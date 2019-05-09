@@ -5,12 +5,13 @@
 # File      : user_agent_middleware
 from aiocrawler import BaseSettings
 from aiocrawler import Request
+from aiocrawler.engine import Engine
 from aiocrawler.middlewares.middleware import BaseMiddleware
 
 
 class UserAgentMiddleware(BaseMiddleware):
-    def __init__(self, settings: BaseSettings):
-        BaseMiddleware.__init__(self, settings)
+    def __init__(self, settings: BaseSettings, engine: Engine):
+        BaseMiddleware.__init__(self, settings, engine)
         from fake_useragent import UserAgent
         self.__ua = UserAgent()
 
