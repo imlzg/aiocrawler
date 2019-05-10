@@ -107,13 +107,7 @@ class Engine(object):
                 from aiocrawler.filters import MemoryFilter
                 self._filters = MemoryFilter(self._settings)
 
-        from aiocrawler.middlewares import BaseMiddleware, SetDefaultRequestMiddleware, UserAgentMiddleware
-
-        default_middlewares = [
-            (SetDefaultRequestMiddleware, 1),
-            (UserAgentMiddleware, 2),
-        ]
-        self.__middlewares.extend(default_middlewares)
+        self.__middlewares.extend(self._settings.DEFAULT_MIDDLEWARES)
         self.__middlewares.extend(self._settings.MIDDLEWARES)
 
         self.__middlewares = sorted(self.__middlewares, key=lambda x: x[1])
@@ -180,6 +174,12 @@ class Engine(object):
                 else:
                     self._scheduler.send_request(one)
             elif isinstance(one, Item):
+                for middleware in self.__middlewares:
+                    processed_item = await self.__run_task(middleware.process_item, one)
+                    if isinstance(processed_item, Item):
+                        one = processed_item
+                        break
+
                 self.__item_count__ += 1
 
                 item_copy = one.__class__()
@@ -298,4 +298,4 @@ class Engine(object):
             pass
 
         asyncio.run(self.main())
-        self._logger.debug('The Crawler was closed: {reason}', reason=self.__closed_reason)
+        self._logger.debug('The Crawler was closed. <Reason {reason}>', reason=self.__closed_reason)

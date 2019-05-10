@@ -1,6 +1,7 @@
 # coding: utf-8
 from aiocrawler import Request
 from aiocrawler import Response
+from aiocrawler import Item
 from aiocrawler import BaseSettings
 from aiocrawler.engine import Engine
 from typing import Union
@@ -19,4 +20,7 @@ class BaseMiddleware(object):
         pass
 
     def process_exception(self, request: Request, exception: Exception) -> Union[None, Request]:
+        pass
+
+    def process_item(self, item: Item) -> Union[None, Item]:
         pass
