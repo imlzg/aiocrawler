@@ -80,7 +80,7 @@ class RedisToMongo(RedisExporter):
             loop.run_until_complete(self.redis_to_mongo())
             self.logger.success('The {item_name} have been inserted into the Mongo Server. ',
                                 item_name=self.item_class_name)
-        except Exception as e:
-            self.logger.error(traceback.format_exc(limit=10))
+        except:
+            self.logger.error(traceback.format_exc())
         finally:
             loop.close()

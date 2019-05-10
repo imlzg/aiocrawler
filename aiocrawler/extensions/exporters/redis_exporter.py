@@ -6,7 +6,7 @@
 import asyncio
 import os
 import pickle
-from typing import Iterable, List
+from typing import Iterable
 
 import aioredis
 from aiocrawler import BaseSettings, Item

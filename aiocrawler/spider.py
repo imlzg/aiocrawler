@@ -1,9 +1,9 @@
 # coding: utf-8
 from typing import List, Union
 
-from aiocrawler.request import Request
-from aiocrawler.response import Response
-from aiocrawler.settings import BaseSettings
+from .request import Request
+from .response import Response
+from .settings import BaseSettings
 from parsel import Selector
 from ujson import loads
 
@@ -23,7 +23,7 @@ class Spider(object):
     def parse(self, response: Response):
         pass
 
-    def __handle__(self, request: Request, response: Response) -> Response:
+    def __parse_html__(self, request: Request, response: Response) -> Response:
         if request.handle_way == 'json':
             try:
                 response.json = loads(response.text)

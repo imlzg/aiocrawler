@@ -71,7 +71,7 @@ class RedisToFile(RedisExporter):
             self.loop = asyncio.get_event_loop()
         try:
             self.loop.run_until_complete(self.main())
-        except Exception as e:
-            self.logger.error(traceback.format_exc(limit=10))
+        except:
+            self.logger.error(traceback.format_exc())
         finally:
             self.loop.close()

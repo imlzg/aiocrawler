@@ -1,9 +1,11 @@
 # coding: utf-8
 import asyncio
-import aiojobs
+from typing import Any, Callable, Dict, List, Tuple
+
 import traceback
-from aiocrawler import BaseSettings
-from typing import Callable, List, Tuple, Dict, Any
+
+import aiojobs
+from . import BaseSettings
 
 
 class JobScheduler(object):
@@ -13,7 +15,7 @@ class JobScheduler(object):
 
         self._settings = settings if settings else BaseSettings()
         self._logger = self._settings.LOGGER
-        self.__job_scheduler: aiojobs.Scheduler = None
+        self.scheduler: aiojobs.Scheduler = None
 
         self.closing = False
         self._shutdown = False
@@ -31,10 +33,10 @@ class JobScheduler(object):
         if loop is None:
             loop = asyncio.get_event_loop()
 
-        self.__job_scheduler = aiojobs.Scheduler(close_timeout=self._settings.AIOJOBS_CLOSED_TIMEOUT,
-                                                 exception_handler=None,
-                                                 limit=self._settings.AIOJOBS_LIMIT,
-                                                 loop=loop, pending_limit=self._settings.AIOJOBS_LIMIT)
+        self.scheduler = aiojobs.Scheduler(close_timeout=self._settings.AIOJOBS_CLOSED_TIMEOUT,
+                                           exception_handler=None,
+                                           limit=self._settings.AIOJOBS_LIMIT,
+                                           loop=loop, pending_limit=self._settings.AIOJOBS_LIMIT)
 
     def add_spawn_task(self, target: Callable, repeat: bool = False, *args, **kwargs):
         if callable(target):
@@ -62,7 +64,7 @@ class JobScheduler(object):
         if not len(self._spawn_tasks):
             return
 
-        if self.__job_scheduler is None or self.__job_scheduler.closed:
+        if self.scheduler is None or self.scheduler.closed:
             self._shutdown = False
             self.closing = False
             self._done_count = 0
@@ -72,20 +74,20 @@ class JobScheduler(object):
         while len(self._spawn_tasks):
             target, repeat, args, kwargs = self._spawn_tasks.pop()
             if repeat:
-                await self.__job_scheduler.spawn(self.__check_done_count(
+                await self.scheduler.spawn(self.__check_done_count(
                     self._repeat_running_until_received_closing, target, *args, **kwargs
                 ))
             else:
-                await self.__job_scheduler.spawn(self.__check_done_count(target, *args, **kwargs))
+                await self.scheduler.spawn(self.__check_done_count(target, *args, **kwargs))
 
-        await self.__job_scheduler.spawn(self.wait_for_done(self._check_done_fn, *self._args, **self._kwargs))
+        await self.scheduler.spawn(self.wait_for_done(self._check_done_fn, *self._args, **self._kwargs))
 
         while True:
             if self._shutdown:
                 break
             await asyncio.sleep(self._event_interval)
 
-        await self.__job_scheduler.close()
+        await self.scheduler.close()
 
     def shutdown(self, force=False):
         if force:

@@ -2,16 +2,17 @@
 import asyncio
 import signal
 import traceback
+from inspect import iscoroutinefunction, isfunction
 from random import uniform
 from time import sleep
-from inspect import isfunction, iscoroutinefunction
-from typing import Iterator, List, Tuple, Union, Any, Dict, Callable
+from itertools import chain
+from typing import Iterator, List, Union
 
-from aiocrawler import BaseSettings, Field, Item, Request, Response, Spider
-from aiocrawler.downloaders import BaseDownloader
-from aiocrawler.filters import BaseFilter
-from aiocrawler.schedulers import BaseScheduler
-from aiocrawler.job_scheduler import JobScheduler
+from . import BaseSettings, Field, Item, Request, Response, Spider
+from .downloaders import BaseDownloader
+from .filters import BaseFilter
+from .job_scheduler import JobScheduler
+from .schedulers import BaseScheduler
 
 
 class Engine(object):
@@ -33,41 +34,36 @@ class Engine(object):
 
         self._filters = filters
         self.__middlewares = []
-
         self.__downloader: BaseDownloader = downloader
 
-        self.__crawled_count__ = 0
-        self.__item_count__ = 0
         self.__log_interval__ = 30
 
         self.__signal_int_count = 0
 
-        self.__pre_tasks: List[Tuple[Callable, Tuple[Any], Dict[str, Any]]] = []
+        self.__pre_tasks = []
         self.__pre_task_done = False
-        self.__completed_tasks: List[Tuple[Callable, Tuple[Any], Dict[str, Any]]] = []
+        self.__completed_tasks = []
 
         self.__job_scheduler = JobScheduler(settings=self._settings)
         self.__closed_reason = 'Finished'
 
-    def add_pre_task(self, target, *args, **kwargs):
+    def add_pre_task(self, task):
         # prevent adding new target after pre tasks has been done
         if self.__pre_task_done:
             self._logger.warning('pre_tasks has been done')
             return
-        if callable(target):
-            self.__pre_tasks.append((target, args, kwargs))
+        self.__pre_tasks.append(task)
 
-    def add_completed_task(self, target, *args, **kwargs):
-        if callable(target):
-            self.__completed_tasks.append((target, args, kwargs))
+    def add_completed_task(self, task):
+        self.__completed_tasks.append(task)
 
-    async def __run_task(self, target, *args, **kwargs):
+    async def __run_task(self, task):
         try:
-            if iscoroutinefunction(target):
-                return await target(*args, **kwargs)
-            else:
-                return target(*args, **kwargs)
-        except Exception as _:
+            if asyncio.iscoroutine(task):
+                task = await task
+
+            return task
+        except:
             self._logger.error(traceback.format_exc())
 
     async def __initialize(self):
@@ -109,11 +105,13 @@ class Engine(object):
 
         from aiocrawler import middlewares
 
-        for middleware_name, key in self._settings.DEFAULT_MIDDLEWARES.items():
-            if isinstance(key, int) and middleware_name in middlewares.__all__:
-                self.__middlewares.append((getattr(middlewares, middleware_name), key))
+        for mw_name, key in self._settings.DEFAULT_MIDDLEWARES.items():
+            if 0 <= key <= 1000 and mw_name in middlewares.__all__:
+                self.__middlewares.append((getattr(middlewares, mw_name), key))
 
-        self.__middlewares.extend(self._settings.MIDDLEWARES)
+        for mw, key in self._settings.MIDDLEWARES:
+            if 0 <= key <= 1000 and issubclass(middlewares.BaseMiddleware, mw):
+                self.__middlewares.append((mw, key))
 
         self.__middlewares = sorted(self.__middlewares, key=lambda x: x[1])
 
@@ -121,7 +119,7 @@ class Engine(object):
 
         self._logger.debug('Initialized')
 
-    async def __handle_response(self, request: Request, data: Union[Response, Exception, None]):
+    async def __handle_downloader_output(self, request: Request, data: Union[Response, Exception, None]):
         """
         Handle the information returned by the downloader.
         :param request: Request
@@ -131,7 +129,7 @@ class Engine(object):
 
         if isinstance(data, Exception):
             for middleware in self.__middlewares:
-                processed_data = await self.__run_task(middleware.process_exception, request, data)
+                processed_data = await self.__run_task(middleware.process_exception(request, data))
                 if processed_data:
                     break
 
@@ -140,21 +138,15 @@ class Engine(object):
                     processed_data = request.err_callback(request, data)
 
         elif isinstance(data, Response):
-            response = self._spider.__handle__(request, data)
+            response = self._spider.__parse_html__(request, data)
             for middleware in self.__middlewares:
-                if iscoroutinefunction(middleware.process_response):
-                    processed_data = await middleware.process_response(
-                        request, response)
-                else:
-                    processed_data = middleware.process_response(
-                        request, response)
+                processed_data = await self.__run_task(middleware.process_response(request, response))
                 if processed_data:
                     if isinstance(processed_data, Response):
                         response = processed_data
                     break
 
             if isinstance(processed_data, Response) or processed_data is None:
-                self.__crawled_count__ += 1
                 self._logger.success('Crawled ({status}) <{method} {url}>',
                                      status=response.status,
                                      method=request.method,
@@ -180,12 +172,10 @@ class Engine(object):
                     self._scheduler.send_request(one)
             elif isinstance(one, Item):
                 for middleware in self.__middlewares:
-                    processed_item = await self.__run_task(middleware.process_item, one)
+                    processed_item = await self.__run_task(middleware.process_item(one))
                     if isinstance(processed_item, Item):
                         one = processed_item
                         break
-
-                self.__item_count__ += 1
 
                 item_copy = one.__class__()
                 for field in self.get_fields(one):
@@ -200,9 +190,9 @@ class Engine(object):
             await asyncio.wait(tasks)
 
     async def __item_filter_and_send__(self, item: Item):
-        item = await self.__run_task(self._filters.filter_item, item)
+        item = await self.__run_task(self._filters.filter_item(item))
         if item:
-            await self.__run_task(self._scheduler.send_item, item)
+            await self.__run_task(self._scheduler.send_item(item))
 
     @staticmethod
     def get_fields(item: Item):
@@ -220,7 +210,7 @@ class Engine(object):
                 'Making Request from word <word: {word}>'.format(word=word))
             request = self._spider.make_request(word)
             if request:
-                await self.__run_task(self._scheduler.send_request, request)
+                await self.__run_task(self._scheduler.send_request(request))
 
     async def __handle_request(self):
         """
@@ -228,7 +218,7 @@ class Engine(object):
         """
         request = await self.__run_task(self._scheduler.get_request)
         if request:
-            request = await self.__run_task(self._filters.filter_request, request)
+            request = await self.__run_task(self._filters.filter_request(request))
             if request:
                 for downloader_middleware in self.__middlewares:
                     if iscoroutinefunction(downloader_middleware.process_request):
@@ -238,23 +228,7 @@ class Engine(object):
 
                 sleep(self._settings.DOWNLOAD_DALEY * uniform(0.5, 1.5))
                 data = await self.__downloader.get_response(request)
-                await self.__handle_response(request, data)
-
-    # async def __log(self):
-    #     """
-    #     Log crawled information.
-    #     """
-    #     while True:
-    #         if self.__job_scheduler.closing:
-    #             break
-    #         request_count = await self.__run_task(self._scheduler.get_total_request)
-    #         self._logger.debug('Total Crawled {crawled_count} Pages, {item_count} Items; '
-    #                            'Total {request_count} Requests in The {scheduler_name}',
-    #                            crawled_count=self.__crawled_count__,
-    #                            item_count=self.__item_count__,
-    #                            request_count=request_count,
-    #                            scheduler_name=self._scheduler.__class__.__name__)
-    #         await asyncio.sleep(self.__log_interval__)
+                await self.__handle_downloader_output(request, data)
 
     def __shutdown_crawler(self, _, __):
         self.__signal_int_count += 1
@@ -282,7 +256,7 @@ class Engine(object):
         for _ in range(self._settings.CONCURRENT_REQUESTS):
             self.__job_scheduler.add_spawn_task(self.__handle_request, True)
 
-        # await self.__job_scheduler.add_spawn_task(self.__log, False)
+        # await self.__job_scheduler.scheduler.spawn(self.l)
 
         await self.__job_scheduler.run_tasks()
 

@@ -10,7 +10,7 @@ import traceback
 from importlib import import_module
 from pathlib import Path
 
-from aiocrawler import BaseSettings
+from . import BaseSettings
 
 logger = BaseSettings.LOGGER
 

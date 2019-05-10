@@ -1,17 +1,27 @@
-import datetime
-import os
-import sys
 import asyncio
-from math import ceil
+import datetime
+import logging
+import os
+import socket
+import sys
 from base64 import urlsafe_b64decode
 from json import dumps
+from math import ceil
 from random import randint
-from typing import Union, List, Tuple
-from aiocrawler import BaseSettings
+from ssl import SSLContext
+from typing import (
+    Awaitable, Callable, Iterable, List, Optional, Tuple, Type, Union, cast)
+
 import aiohttp_jinja2
 import aiohttp_session
+from aiocrawler import BaseSettings
 from aiohttp import web
+from aiohttp.abc import AbstractAccessLogger
+from aiohttp.log import access_logger
+from aiohttp.web import Application
+from aiohttp.web_log import AccessLogger
 from aiohttp.web_request import Request
+from aiohttp.web_runner import AppRunner, BaseSite, SockSite, TCPSite, UnixSite
 from aiohttp_session import get_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
@@ -38,8 +48,8 @@ class Dashboard:
         self.settings = settings
         self.logger = self.settings.LOGGER
         self.__item_at = 0
-        self.__seconds = 1 * 60 * 60    # 1 hour(s)
-        self.__interval = 5    # s
+        self.__seconds = 1 * 60 * 60  # 1 hour(s)
+        self.__interval = 5  # s
         self.__item_info: List[Tuple[str, Union[int, float]]] = []
 
     @aiohttp_jinja2.template("index.html")
@@ -120,7 +130,7 @@ class Dashboard:
         now = datetime.datetime.now()
         num = ceil(self.__seconds / self.__interval)
         self.__item_info = [
-            self.generate_data(now - datetime.timedelta(seconds=i*self.__interval), 0) for i in range(num)
+            self.generate_data(now - datetime.timedelta(seconds=i * self.__interval), 0) for i in range(num)
         ]
 
         while True:
@@ -140,6 +150,120 @@ class Dashboard:
             ]
         }
         return data
+
+    @staticmethod
+    async def run_app(app: Union[Application, Awaitable[Application]], *,
+                        host: Optional[str] = None,
+                        port: Optional[int] = None,
+                        path: Optional[str] = None,
+                        sock: Optional[socket.socket] = None,
+                        shutdown_timeout: float = 60.0,
+                        ssl_context: Optional[SSLContext] = None,
+                        print_: Callable[..., None] = print,
+                        backlog: int = 128,
+                        access_log_class: Type[AbstractAccessLogger] = AccessLogger,
+                        access_log_format: str = AccessLogger.LOG_FORMAT,
+                        access_log: Optional[logging.Logger] = access_logger,
+                        handle_signals: bool = True,
+                        reuse_address: Optional[bool] = None,
+                        reuse_port: Optional[bool] = None) -> None:
+        # A internal functio to actually do all dirty job for application running
+        if asyncio.iscoroutine(app):
+            app = await app  # type: ignore
+
+        app = cast(Application, app)
+
+        runner = AppRunner(app, handle_signals=handle_signals,
+                           access_log_class=access_log_class,
+                           access_log_format=access_log_format,
+                           access_log=access_log)
+
+        await runner.setup()
+
+        sites = []  # type: List[BaseSite]
+
+        try:
+            if host is not None:
+                if isinstance(host, (str, bytes, bytearray, memoryview)):
+                    sites.append(TCPSite(runner, host, port,
+                                         shutdown_timeout=shutdown_timeout,
+                                         ssl_context=ssl_context,
+                                         backlog=backlog,
+                                         reuse_address=reuse_address,
+                                         reuse_port=reuse_port))
+                else:
+                    for h in host:
+                        sites.append(TCPSite(runner, h, port,
+                                             shutdown_timeout=shutdown_timeout,
+                                             ssl_context=ssl_context,
+                                             backlog=backlog,
+                                             reuse_address=reuse_address,
+                                             reuse_port=reuse_port))
+            elif path is None and sock is None or port is not None:
+                sites.append(TCPSite(runner, port=port,
+                                     shutdown_timeout=shutdown_timeout,
+                                     ssl_context=ssl_context, backlog=backlog,
+                                     reuse_address=reuse_address,
+                                     reuse_port=reuse_port))
+
+            if path is not None:
+                if isinstance(path, (str, bytes, bytearray, memoryview)):
+                    sites.append(UnixSite(runner, path,
+                                          shutdown_timeout=shutdown_timeout,
+                                          ssl_context=ssl_context,
+                                          backlog=backlog))
+                else:
+                    for p in path:
+                        sites.append(UnixSite(runner, p,
+                                              shutdown_timeout=shutdown_timeout,
+                                              ssl_context=ssl_context,
+                                              backlog=backlog))
+
+            if sock is not None:
+                if not isinstance(sock, Iterable):
+                    sites.append(SockSite(runner, sock,
+                                          shutdown_timeout=shutdown_timeout,
+                                          ssl_context=ssl_context,
+                                          backlog=backlog))
+                else:
+                    for s in sock:
+                        sites.append(SockSite(runner, s,
+                                              shutdown_timeout=shutdown_timeout,
+                                              ssl_context=ssl_context,
+                                              backlog=backlog))
+            for site in sites:
+                await site.start()
+
+            if print_:  # pragma: no branch
+                names = sorted(str(s.name) for s in runner.sites)
+                print_("======== Running on {} ========\n"
+                       "(Press CTRL+C to quit)".format(', '.join(names)))
+            while True:
+                await asyncio.sleep(3600)  # sleep forever by 1 hour intervals
+        finally:
+            await runner.cleanup()
+
+    @staticmethod
+    def cancel_all_tasks(loop: asyncio.AbstractEventLoop) -> None:
+        to_cancel = asyncio.Task.all_tasks(loop)
+        if not to_cancel:
+            return
+
+        for task in to_cancel:
+            task.cancel()
+
+        loop.run_until_complete(
+            asyncio.gather(*to_cancel, loop=loop, return_exceptions=True))
+
+        for task in to_cancel:
+            if task.cancelled():
+                continue
+            if task.exception() is not None:
+                loop.call_exception_handler({
+                    'message': 'unhandled exception during asyncio.run() shutdown',
+                    'exception': task.exception(),
+                    'task': task,
+                })
 
     def run(self):
         current_dir = os.path.dirname(__file__)
@@ -166,12 +290,4 @@ class Dashboard:
             web.static('/vendor', 'templates/vendor'),
             web.static('/fonts', 'templates/fonts')
         ])
-
-        loop = asyncio.get_event_loop()
-        try:
-            asyncio.ensure_future(self.set_item_count_history())
-            asyncio.ensure_future(web._run_app(app))
-            loop.run_forever()
-        finally:
-            web._cancel_all_tasks(loop)
-            loop.close()
+        return app
