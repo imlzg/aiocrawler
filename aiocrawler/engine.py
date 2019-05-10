@@ -107,7 +107,12 @@ class Engine(object):
                 from aiocrawler.filters import MemoryFilter
                 self._filters = MemoryFilter(self._settings)
 
-        self.__middlewares.extend(self._settings.DEFAULT_MIDDLEWARES)
+        from aiocrawler import middlewares
+
+        for middleware_name, key in self._settings.DEFAULT_MIDDLEWARES.items():
+            if isinstance(key, int) and middleware_name in middlewares.__all__:
+                self.__middlewares.append((getattr(middlewares, middleware_name), key))
+
         self.__middlewares.extend(self._settings.MIDDLEWARES)
 
         self.__middlewares = sorted(self.__middlewares, key=lambda x: x[1])

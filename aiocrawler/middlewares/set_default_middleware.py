@@ -3,12 +3,11 @@
 # Author    : kylin
 # PROJECT   : aiocrawler
 # File      : set_default_middleware
-from aiocrawler import BaseSettings
 from aiocrawler import Request
 from aiocrawler.middlewares.middleware import BaseMiddleware
 
 
-class SetDefaultRequestMiddleware(BaseMiddleware):
+class SetDefaultMiddleware(BaseMiddleware):
 
     def process_request(self, request: Request):
         if request.timeout is None:

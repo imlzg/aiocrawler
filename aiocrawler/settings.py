@@ -1,8 +1,6 @@
 # coding: utf-8
 import sys
 from loguru import logger
-from aiocrawler.middlewares import UserAgentMiddleware
-from aiocrawler.middlewares import SetDefaultRequestMiddleware
 
 
 class BaseSettings:
@@ -51,8 +49,8 @@ class BaseSettings:
     ALLOWED_CODES = []
 
     MIDDLEWARES = []
-    DEFAULT_MIDDLEWARES = [
-        (SetDefaultRequestMiddleware, 1),
-        (UserAgentMiddleware, 2),
-    ]
 
+    DEFAULT_MIDDLEWARES = {
+        'SetDefaultMiddleware': 0,
+        'UserAgentMiddleware': 1,
+    }

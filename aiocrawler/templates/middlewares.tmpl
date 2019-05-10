@@ -3,10 +3,10 @@
 # PROJECT   : $project_name
 # File      : $filename
 from aiocrawler import BaseSettings
-from aiocrawler.middlewares import BaseDownloaderMiddleware
+from aiocrawler.middlewares import BaseMiddleware
 
 
-class $classname(BaseDownloaderMiddleware):
+class $classname(BaseMiddleware):
 
     def process_request(self, request):
         pass
@@ -15,4 +15,22 @@ class $classname(BaseDownloaderMiddleware):
         pass
 
     def process_exception(self, request, exception):
+        pass
+
+    def process_item(item):
+        pass
+
+
+class Async$classname(BaseMiddleware):
+
+    async def process_request(self, request):
+        pass
+
+    async def process_response(self, request, response):
+        pass
+
+    async def process_exception(self, request, exception):
+        pass
+
+    async def process_item(item):
         pass

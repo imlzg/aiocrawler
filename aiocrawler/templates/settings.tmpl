@@ -3,7 +3,7 @@
 # PROJECT   : $project_name
 # File      : $filename
 from aiocrawler import BaseSettings
-from middlewares import $middleware_name
+from middlewares import $middleware_name, Async$middleware_name
 
 
 class $classname(BaseSettings):
@@ -26,5 +26,5 @@ class $classname(BaseSettings):
     DOWNLOAD_DALEY = 0
     DOWNLOADER_MIDDLEWARES = [
         ($middleware_name, 300),
-
+        (Async$middleware_name, 301)
     ]
