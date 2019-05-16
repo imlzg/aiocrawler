@@ -6,14 +6,15 @@
 from aiocrawler.settings import BaseSettings
 from typing import List
 from aiocrawler.item import Item
-from aiocrawler.field import Field
+from aiocrawler import Field
+from aiocrawler import logger
 from math import ceil
 
 
 class BaseExporter(object):
     def __init__(self, settings: BaseSettings, item_class: Item):
         self.settings = settings
-        self.logger = settings.LOGGER
+        self.logger = logger
         self.item_class = item_class
         self.item_class_name = item_class.__class__.__name__
 

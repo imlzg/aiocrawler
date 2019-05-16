@@ -29,22 +29,22 @@ class RedisToMongo(RedisExporter):
         self.table = None
 
     async def initialize_mongo(self):
-        mongo_host = self.settings.MONGO_HOST or os.environ.get('MONGO_HOST', None)
+        mongo_host = self.settings.MONGO_HOST or os.environ.login_get('MONGO_HOST', None)
 
         if mongo_host is None:
             raise ValueError('MONGO_HOST is not configured in {setting_name} or the Environmental variables'.format(
                 setting_name=self.settings.__class__.__name__))
 
-        mongo_port = self.settings.MONGO_PORT or os.environ.get('MONGO_PORT', 27017)
-        mongo_user = self.settings.MONGO_USER or os.environ.get('MONGO_USER', None)
-        mongo_password = self.settings.MONGO_PASSWORD or os.environ.get('MONGO_PASSWORD', None)
+        mongo_port = self.settings.MONGO_PORT or os.environ.login_get('MONGO_PORT', 27017)
+        mongo_user = self.settings.MONGO_USER or os.environ.login_get('MONGO_USER', None)
+        mongo_password = self.settings.MONGO_PASSWORD or os.environ.login_get('MONGO_PASSWORD', None)
 
         self.client = AsyncIOMotorClient(host=mongo_host,
                                          port=mongo_port,
                                          username=mongo_user,
                                          password=mongo_password)
 
-        db_name = self.settings.MONGO_DB or os.environ.get('MONGO_DB', None) or self.settings.PROJECT_NAME
+        db_name = self.settings.MONGO_DB or os.environ.login_get('MONGO_DB', None) or self.settings.PROJECT_NAME
         self.db = self.client[db_name]
         self.table = self.db[self.table_name]
         self.mongo_session = await self.client.start_session()

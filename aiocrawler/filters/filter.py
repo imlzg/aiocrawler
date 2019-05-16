@@ -5,13 +5,13 @@ from hashlib import sha1
 from typing import Union
 from aiocrawler import Item
 from aiocrawler import Request
-from aiocrawler import BaseSettings
+from aiocrawler import BaseSettings, logger
 
 
 class BaseFilter(object):
     def __init__(self, settings: BaseSettings):
         self.settings = settings
-        self.logger = settings.LOGGER
+        self.logger = logger
 
     async def filter_request(self, request: Request) -> Union[None, Request]:
         raise NotImplementedError('{} filter_request is not define'.format(self.__class__.__name__))

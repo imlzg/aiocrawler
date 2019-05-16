@@ -3,41 +3,57 @@
 # Author    : kylin
 # PROJECT   : aiocrawler
 # File      : aiocrawler
-import argparse
 import os
-import sys
-import traceback
-from importlib import import_module
-from pathlib import Path
-
-from . import BaseSettings
-
-logger = BaseSettings.LOGGER
-
-current_dir = str(Path('').cwd())
-if current_dir not in sys.path:
-    sys.path.append(current_dir)
+import argparse
+from aiocrawler.engine import Engine
+from aiocrawler.utils import get_setting, get_spider, get_item
+from aiocrawler.extensions.templates import SpiderTemplate
+from aiocrawler import logger
 
 
 def main():
+    """
+    Usage:
+        aiocrawler run (<name>)
+        aiocrawler startproject (<name>)
+        aiocrawler output (<name>)  [-i item_name --item-name=item_name]
+                                    [-t output_type --type=output_type]
+                                    [-f filename, --filename=filename]
+        aiocrawler -h | --help
+        aiocrawler --version
+    Options:
+        -h --help   show this help
+        -v --version    show current version
+        run     run a aiocrawler project
+        startproject    create a new aiocrawler project
+        output      output the item from the project
+        name    project name
+        -i item_name --item-name=item_name     the item name from the items.py
+        --type=output_type     output type, support mongo and csv now [default: mongo,csv]
+        -f filename, --filename=filename  csv filename
+    Example:
+        aiocrawler startproject demo
+        aiocrawler run demo
+        aiocrawler output demo --item-name=demo --type=mongo
+    """
     parser = argparse.ArgumentParser()
-    parser.add_argument("commands", choices=["startproject", "run", "output"], help="The Aiocrawler Commands")
+    parser.add_argument("commands", choices=["startproject", "run", "output"], help="The Aiocrawler CLI")
     parser.add_argument('project_name', help="The Project Name", default=None)
-    parser.add_argument('--filename', '-f', help='The Filename', default=None)
-    parser.add_argument('--item', '-i', help='The Item you want to output, output all items by default.', default=None)
+    parser.add_argument('--setting_name', '-s',  help='The setting name', default=None)
+    parser.add_argument('--filename', '-f', help='The csv filename', default=None)
+    parser.add_argument('--item', '-i', help='the item name from the items.py', default=None)
     parser.add_argument('--type', '-t', choices=['csv', 'mongo'],
-                        help='the Item output type(local csv/remote mongo)', default=None)
-    parser.add_argument('--batch_size', '-b', help='Batch size', default=1000, type=int)
-    parser.add_argument('--table_name', '-tb', help='Table name', default=None)
+                        help='output type, support mongo and csv now', default=None)
+    parser.add_argument('--batch_size', '-b', help='batch size', default=1000, type=int)
+    parser.add_argument('--table_name', '-tb', help='Mongo table name', default=None)
     args = parser.parse_args()
 
     if args.commands == "startproject" and args.project_name:
-        from aiocrawler.extensions.templates import SpiderTemplate
 
         tmpl = SpiderTemplate(args.project_name)
         tmpl.gen_project()
     elif args.commands == "run" and args.project_name:
-        run_spider(args.project_name)
+        run_spider(args.project_name, args.setting_name)
 
     elif args.commands == "output":
         output(project_name=args.project_name,
@@ -53,15 +69,10 @@ def output(project_name: str,
            item_name: str = None,
            output_type: str = 'csv',
            batch_size: int = 1000, **kwargs):
-    settings = None
-    settings_subclasses = get_subclass(BaseSettings, 'settings')
-    for sub in settings_subclasses:
-        if vars(sub).get('PROJECT_NAME', '') == project_name:
-            settings = sub
-            break
+    settings = get_setting(project_name)
 
     if output_type is None:
-        mongo_host = settings.MONGO_HOST or os.environ.get('MONGO_HOST', None)
+        mongo_host = settings.MONGO_HOST or os.environ.login_get('MONGO_HOST', None)
         if mongo_host:
             output_type = 'mongo'
         else:
@@ -71,21 +82,7 @@ def output(project_name: str,
         logger.error('Unknown output type: {type}', type=output_type)
         return
 
-    from aiocrawler import Item
-    item_subclasses = get_subclass(Item, 'items')
-    item_class = None
-
-    item_name = item_name if item_name else project_name
-    for sub in item_subclasses:
-        if item_name and vars(sub).get('item_name', None) == item_name:
-            item_class = sub
-            break
-    if item_class is None:
-        for sub in item_subclasses:
-            if vars(sub).get('item_name', None):
-                item_class = sub
-                break
-
+    item_class = get_item(item_name)
     if settings and item_class:
         if output_type == 'csv':
             from aiocrawler.extensions.exporters import RedisToFile
@@ -100,35 +97,11 @@ def output(project_name: str,
         logger.error('The item name or project name you provided is not exists in this directory.')
 
 
-def run_spider(name: str):
-    from aiocrawler import Spider
-    spider = None
-    subclasses = get_subclass(Spider, 'spiders')
-    for subclass in subclasses:
-        if vars(subclass).get('name', None) == name:
-            spider = subclass
-            break
-
-    if not spider:
-        logger.error('The Spider name you provided is not found in this directory.')
+def run_spider(spider_name: str, setting_name: str):
+    settings = get_setting(setting_name)()
+    spider = get_spider(spider_name)(settings)
+    if not spider or not settings:
+        logger.error('The project name you provided is not found in this directory.')
         return
-    try:
-        run_module = import_module('run')
-        run_module.run(spider)
-    except Exception as e:
-        logger.error(traceback.format_exc())
-
-
-def get_subclass(class_type: type, module: str, subclass_name: str = None):
-    try:
-        import_module(module)
-    finally:
-        pass
-    data = class_type.__subclasses__()
-
-    if subclass_name:
-        for sub_class in data:
-            if sub_class.__name__ == subclass_name:
-                data = sub_class
-                break
-    return data
+    engine = Engine(settings=settings, spider=spider)
+    engine.run()

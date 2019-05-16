@@ -5,19 +5,19 @@ from typing import Any, Callable, Dict, List, Tuple
 import traceback
 
 import aiojobs
-from . import BaseSettings
+from aiocrawler import BaseSettings, logger
 
 
 class JobScheduler(object):
     def __init__(self, settings: BaseSettings = None,
-                 event_interval=0.1,
+                 event_interval=1,
+                 scheduler: aiojobs.Scheduler = None,
                  check_done_fn=None, *args, **kwargs):
 
         self._settings = settings if settings else BaseSettings()
-        self._logger = self._settings.LOGGER
-        self.scheduler: aiojobs.Scheduler = None
+        self.scheduler: aiojobs.Scheduler = scheduler
 
-        self.closing = False
+        self.shutting_down = False
         self._shutdown = False
         self._done_count = 0
 
@@ -42,20 +42,13 @@ class JobScheduler(object):
         if callable(target):
             self._spawn_tasks.append((target, repeat, args, kwargs))
 
-    async def __check_done_count(self, target: Callable, *args, **kwargs):
+    async def __add_done_count(self, target: Callable, *args, **kwargs):
         await target(*args, **kwargs)
         self._done_count += 1
 
-    async def wait_for_done(self, fn, *args, **kwargs):
-        if not callable(fn):
-            def func(_=None, __=None):
-                if self._done_count == self._running_task_count:
-                    return True
-
-            fn = func
-
+    async def wait_for_done(self):
         while True:
-            if fn(*args, **kwargs):
+            if self._done_count == self._running_task_count:
                 self._shutdown = True
                 break
             await asyncio.sleep(self._event_interval)
@@ -66,7 +59,7 @@ class JobScheduler(object):
 
         if self.scheduler is None or self.scheduler.closed:
             self._shutdown = False
-            self.closing = False
+            self.shutting_down = False
             self._done_count = 0
             await self.create_new_job_scheduler()
 
@@ -74,13 +67,13 @@ class JobScheduler(object):
         while len(self._spawn_tasks):
             target, repeat, args, kwargs = self._spawn_tasks.pop()
             if repeat:
-                await self.scheduler.spawn(self.__check_done_count(
-                    self._repeat_running_until_received_closing, target, *args, **kwargs
+                await self.scheduler.spawn(self.__add_done_count(
+                    self._repeat_until_received_signal, target, *args, **kwargs
                 ))
             else:
-                await self.scheduler.spawn(self.__check_done_count(target, *args, **kwargs))
+                await self.scheduler.spawn(self.__add_done_count(target, *args, **kwargs))
 
-        await self.scheduler.spawn(self.wait_for_done(self._check_done_fn, *self._args, **self._kwargs))
+        await self.scheduler.spawn(self.wait_for_done())
 
         while True:
             if self._shutdown:
@@ -93,14 +86,15 @@ class JobScheduler(object):
         if force:
             self._shutdown = True
         else:
-            self.closing = True
+            self.shutting_down = True
 
-    async def _repeat_running_until_received_closing(self, fn: Callable, *args, **kwargs):
+    async def _repeat_until_received_signal(self, fn: Callable, *args, **kwargs):
+        # noinspection PyBroadException
         try:
             while True:
-                if self.closing:
+                if self.shutting_down:
                     break
                 await asyncio.sleep(self._settings.PROCESS_DALEY)
                 await fn(*args, **kwargs)
-        except:
-            self._logger.error(traceback.format_exc())
+        except Exception:
+            logger.error(traceback.format_exc())

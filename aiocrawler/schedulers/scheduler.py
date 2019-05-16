@@ -1,13 +1,13 @@
 # coding: utf-8
 from aiocrawler import Item
 from aiocrawler import Request
-from aiocrawler import BaseSettings
+from aiocrawler import BaseSettings, logger
 
 
 class BaseScheduler(object):
     def __init__(self, settings: BaseSettings):
         self.settings = settings
-        self.logger = self.settings.LOGGER
+        self.logger = logger
 
     def get_word(self):
         raise NotImplementedError('{} get_word not define'.format(self.__class__.__name__))

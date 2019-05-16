@@ -16,7 +16,7 @@ class AioDownloader(BaseDownloader):
     def __init__(self, settings: BaseSettings):
         BaseDownloader.__init__(self, settings)
 
-    async def get_response(self, request):
+    async def download(self, request):
         connector = None
         proxy = None
         if request.proxy:

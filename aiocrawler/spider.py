@@ -1,9 +1,10 @@
 # coding: utf-8
 from typing import List, Union
 
-from .request import Request
-from .response import Response
-from .settings import BaseSettings
+from aiocrawler.request import Request
+from aiocrawler.response import Response
+from aiocrawler.settings import BaseSettings
+from aiocrawler.log import logger
 from parsel import Selector
 from ujson import loads
 
@@ -14,7 +15,7 @@ class Spider(object):
 
     def __init__(self, settings: BaseSettings):
         self.setting = settings
-        self.logger = self.setting.LOGGER
+        self.logger = logger
 
     def make_request(self, word: str) -> Union[List[Request], Request]:
         raise NotImplementedError(

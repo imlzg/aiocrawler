@@ -1,22 +1,14 @@
 # coding: utf-8
-import sys
-from loguru import logger
 
 
 class BaseSettings:
-    logger.remove()
-    fmt = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "\
-          "<level>{level}</level> | "\
-          "<cyan>{name}</cyan> <line {line}>: <level>{message}</level>"
-    logger.add(sys.stdout, format=fmt)
-    logger.add('log/aio-crawler.log', format=fmt, rotation='10 MB')
-    LOGGER = logger
 
     PROJECT_NAME = None
 
     ENABLE_REDIS_SETTINGS = False
     REDIS_URL = None
     REDIS_PROJECT_NAME = None
+    DISABLE_REDIS = False
 
     MONGO_HOST = None
     MONGO_PORT = 27017
@@ -38,7 +30,7 @@ class BaseSettings:
     }
 
     DOWNLOAD_DALEY = 0
-    PROCESS_DALEY = 0.05
+    PROCESS_DALEY = 0.2
 
     AIOJOBS_LIMIT = 10000
     AIOJOBS_CLOSED_TIMEOUT = 0.1
@@ -54,3 +46,5 @@ class BaseSettings:
         'SetDefaultMiddleware': 0,
         'UserAgentMiddleware': 1,
     }
+
+    DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'

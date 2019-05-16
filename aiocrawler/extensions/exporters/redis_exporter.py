@@ -21,7 +21,7 @@ class RedisExporter(BaseExporter):
         self.redis_items_key = self.settings.REDIS_PROJECT_NAME + ':items'
 
     async def initialize_redis(self):
-        redis_url = self.settings.REDIS_URL or os.environ.get('REDIS_URL', None)
+        redis_url = self.settings.REDIS_URL or os.environ.login_get('REDIS_URL', None)
         if not redis_url:
             raise ValueError('REDIS_URL is not configured in {setting_name} or the Environmental variables'.format(
                 setting_name=self.settings.__class__.__name__))

@@ -6,14 +6,14 @@ from aioredis import ConnectionsPool
 from aiocrawler import Item
 from aiocrawler import Request
 from aiocrawler import BaseSettings
-from aiocrawler.extensions import Redis
+from aiocrawler.extensions import RedisConnector
 from aiocrawler.filters.filter import BaseFilter
 
 
-class RedisFilter(BaseFilter, Redis):
+class RedisFilter(BaseFilter, RedisConnector):
     def __init__(self, settings: BaseSettings, redis_pool: ConnectionsPool = None):
         BaseFilter.__init__(self, settings)
-        Redis.__init__(self, settings, redis_pool)
+        RedisConnector.__init__(self, settings, redis_pool)
 
         self.__redis_filters_key = settings.REDIS_PROJECT_NAME + ':filters'
 

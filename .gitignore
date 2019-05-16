@@ -8,3 +8,4 @@ dist/
 aiocrawler.egg-info/
 test/
 .vscode/
+test.py

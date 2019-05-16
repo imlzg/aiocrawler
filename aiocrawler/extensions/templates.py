@@ -4,13 +4,13 @@ from datetime import date
 from typing import Union
 from string import Template
 import traceback
-from aiocrawler.settings import BaseSettings
+from aiocrawler import logger
 
 
 class SpiderTemplate(object):
     def __init__(self, project_name: str, output_dir: Union[Path, str] = ''):
         self.__templates_dir = Path(__file__).parent.parent/'templates'
-        self.__logger = BaseSettings.LOGGER
+        self.__logger = logger
 
         self.__project_name = project_name
         self.__output_dir = Path(output_dir)
@@ -22,6 +22,7 @@ class SpiderTemplate(object):
                                 project_name=self.__project_name)
             return
 
+        # noinspection PyBroadException
         try:
             self.__project_dir.mkdir()
             self.__gen_spiders__()
@@ -32,7 +33,7 @@ class SpiderTemplate(object):
 
             self.__logger.success('The Project "{project_name}" was created successfully.',
                                   project_name=self.__project_name)
-        except Exception as e:
+        except Exception:
             files = self.__project_dir.glob('*')
             for file in files:
                 file.unlink()
