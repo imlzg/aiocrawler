@@ -7,10 +7,10 @@ from random import uniform
 from time import sleep
 from typing import Iterator, List, Union
 
+import aiojobs
 from aiocrawler import BaseSettings, Field, Item, Request, Response, Spider, logger
 from aiocrawler.downloaders import BaseDownloader
 from aiocrawler.filters import BaseFilter
-from aiocrawler.job_scheduler import JobScheduler
 from aiocrawler.schedulers import BaseScheduler
 from aiocrawler.collectors.base_collector import BaseCollector
 
@@ -25,7 +25,8 @@ class Engine(object):
                  filters: BaseFilter = None,
                  scheduler: BaseScheduler = None,
                  downloader: BaseDownloader = None,
-                 collector: BaseCollector = None
+                 collector: BaseCollector = None,
+                 job_scheduler: aiojobs.Scheduler = None
                  ):
 
         self._spider = spider
@@ -41,9 +42,20 @@ class Engine(object):
         self.__signal_int_count = 0
 
         self.__startup_tasks = []
-        self.__completed_tasks = []
+        self.__cleanup_tasks = []
 
-        self.__job_scheduler = JobScheduler(settings=self._settings)
+        self.__job_scheduler: aiojobs.Scheduler = job_scheduler if job_scheduler else None
+        self.__shutting_down = False
+        self.__shutdown = False
+
+        # noinspection PyBroadException
+        try:
+            # try import uvloop as Event Loop Policy
+
+            import uvloop
+            asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+        except Exception:
+            pass
 
     def on_startup(self, target, *args, **kwargs):
         # prevent adding new target after startup tasks has been done
@@ -53,16 +65,14 @@ class Engine(object):
         self.__startup_tasks.append((target, args, kwargs))
 
     def on_cleanup(self, target, *args, **kwargs):
-        self.__completed_tasks.append((target, args, kwargs))
+        self.__cleanup_tasks.append((target, args, kwargs))
 
-    async def __run_task(self, task, background=False):
+    @staticmethod
+    async def __run_task(task):
         # noinspection PyBroadException
         try:
             if asyncio.iscoroutine(task):
-                if background:
-                    task = await self.__job_scheduler.scheduler.spawn(task)
-                else:
-                    task = await task
+                task = await task
 
             return task
         except Exception:
@@ -128,11 +138,11 @@ class Engine(object):
         handled_data = None
 
         if isinstance(data, Exception):
-            await self.__run_task(self.__collector.collect_downloader_exception(), background=True)
+            await self.__job_scheduler.spawn(self.__run_task(self.__collector.collect_downloader_exception()))
             handled_data = await self.__handle_downloader_exception(request, data)
 
         elif isinstance(data, Response):
-            await self.__run_task(self.__collector.collect_response_received(response=data), background=True)
+            await self.__job_scheduler.spawn(self.__run_task(self.__collector.collect_response_received(response=data)))
             handled_data = await self.__handle_downloader_response(request, data)
 
         if not handled_data:
@@ -209,7 +219,7 @@ class Engine(object):
     async def __filter_and_send(self, request: Request, item: Item):
         item = await self.__run_task(self._filters.filter_item(item))
         if item:
-            await self.__run_task(self.__collector.collect_item(item), background=True)
+            await self.__job_scheduler.spawn(self.__run_task(self.__collector.collect_item(item)))
 
             logger.success('Crawled from <{method} {url}> \n {item}',
                            method=request.method, url=request.url, item=item)
@@ -226,89 +236,103 @@ class Engine(object):
         """
         Handle the word from the scheduler.
         """
-        word = await self.__run_task(self._scheduler.get_word())
-        if word:
-            await self.__run_task(self.__collector.collect_word(), background=True)
+        while not self.__shutting_down:
+            await asyncio.sleep(self._settings.PROCESS_DALEY)
+            word = await self.__run_task(self._scheduler.get_word())
+            if word:
+                await self.__job_scheduler.spawn(self.__run_task(self.__collector.collect_word()))
 
-            logger.debug(
-                'Making Request from word <word: {word}>'.format(word=word))
-            request = self._spider.make_request(word)
-            if request:
-                await self.__run_task(self._scheduler.send_request(request))
+                logger.debug(
+                    'Making Request from word <word: {word}>'.format(word=word))
+                request = self._spider.make_request(word)
+                if request:
+                    await self.__run_task(self._scheduler.send_request(request))
 
     async def __handle_scheduler_request(self):
         """
         Handle the request from scheduler.
         """
-        request = await self.__run_task(self._scheduler.get_request())
-        if request:
-            request = await self.__run_task(self._filters.filter_request(request))
+        while not self.__shutting_down:
+            await asyncio.sleep(self._settings.PROCESS_DALEY)
+            request = await self.__run_task(self._scheduler.get_request())
             if request:
-                await self.__run_task(self.__collector.collect_request(request), background=True)
+                request = await self.__run_task(self._filters.filter_request(request))
+                if request:
+                    await self.__job_scheduler.spawn(self.__run_task(self.__collector.collect_request(request)))
 
-                for downloader_middleware in self.__middlewares:
-                    await self.__run_task(downloader_middleware.process_request(request))
+                    for downloader_middleware in self.__middlewares:
+                        await self.__run_task(downloader_middleware.process_request(request))
 
-                sleep(self._settings.DOWNLOAD_DALEY * uniform(0.5, 1.5))
-                data = await self.__run_task(self.__downloader.download(request))
-                await self.__handle_downloader_output(request, data)
+                    sleep(self._settings.DOWNLOAD_DALEY * uniform(0.5, 1.5))
+                    data = await self.__run_task(self.__downloader.download(request))
+                    await self.__handle_downloader_output(request, data)
 
-    def __shutdown_crawler(self, _, __):
+    def __shutdown_signal(self, _, __):
         self.__signal_int_count += 1
 
         if self.__signal_int_count == 1:
             logger.debug('Received SIGNAL INT, shutting down gracefully. Send again to force')
-            self.close_crawler('Shutdown')
+            self.close_crawler('Received SIGNAL INT')
         else:
-            self.close_crawler('Shutdown by force', force=True)
+            self.close_crawler('Received SIGNAL INT', force=True)
             logger.debug('Received SIGNAL INT Over 2 times, shutting down the Crawler by force...')
 
-    def close_crawler(self, reason: str = "Finished", force: bool = False):
-        self.__job_scheduler.shutdown(force)
+    def close_crawler(self, reason: str = 'Finished', force: bool = False):
+        if force:
+            self.__shutdown = True
+        else:
+            self.__shutting_down = True
+
         self.__collector.finish_reason = reason
+
+    async def _main(self):
+        await self.__initialize()
+
+        tasks = []
+        for target, args, kwargs in self.__startup_tasks:
+            tasks.append(asyncio.ensure_future(self.__run_task(target(*args, **kwargs))))
+
+        for _ in range(self._settings.CONCURRENT_WORDS):
+            tasks.append(asyncio.ensure_future(self.__handle_scheduler_word()))
+
+        for _ in range(self._settings.CONCURRENT_REQUESTS):
+            tasks.append(asyncio.ensure_future(self.__handle_scheduler_request()))
+
+        await self.__job_scheduler.spawn(self.__run_task(self.__collector.collect_start(
+            self._spider.__class__.__name__, self._settings.DATETIME_FORMAT
+        )))
+
+        await asyncio.wait(tasks)
+
+        tasks = []
+        for target, args, kwargs in self.__cleanup_tasks:
+            tasks.append(asyncio.ensure_future(self.__run_task(target(*args, **kwargs))))
+
+        if len(tasks):
+            await asyncio.wait(tasks)
+
+        # collect finished information
+        await self.__run_task(self.__collector.collect_finish(self._settings.DATETIME_FORMAT))
+        await self.__run_task(self.__collector.output_stats())
+
+        logger.debug('The Crawler is closed. <Reason {reason}>', reason=self.__collector.finish_reason)
 
     async def main(self):
         if self.__collector.running:
             logger.error('The Crawler already running')
             return
 
-        for target, args, kwargs in self.__startup_tasks:
-            self.__job_scheduler.add_spawn_task(target, False, *args, **kwargs)
+        if not self.__job_scheduler:
+            self.__job_scheduler = await aiojobs.create_scheduler(limit=None)
 
-        self.__job_scheduler.add_spawn_task(self.__initialize)
-        await self.__job_scheduler.run_tasks()
+        signal.signal(signal.SIGINT, self.__shutdown_signal)
+        main_job = await self.__job_scheduler.spawn(self._main())
 
-        await self.__run_task(self.__collector.collect_start(
-            self._spider.__class__.__name__, self._settings.DATETIME_FORMAT))
-
-        for _ in range(self._settings.CONCURRENT_WORDS):
-            self.__job_scheduler.add_spawn_task(self.__handle_scheduler_word, True)
-
-        for _ in range(self._settings.CONCURRENT_REQUESTS):
-            self.__job_scheduler.add_spawn_task(self.__handle_scheduler_request, True)
-
-        await self.__job_scheduler.run_tasks()
-
-        for target, args, kwargs in self.__completed_tasks:
-            self.__job_scheduler.add_spawn_task(target, False, *args, **kwargs)
-
-        await self.__job_scheduler.run_tasks()
-
-        # collect finished information
-        await self.__run_task(self.__collector.collect_finish(self._settings.DATETIME_FORMAT))
+        while True:
+            if self.__shutdown or main_job.closed:
+                break
+            await asyncio.sleep(0.1)
+        await main_job.close()
 
     def run(self):
-        signal.signal(signal.SIGINT, self.__shutdown_crawler)
-
-        # noinspection PyBroadException
-        try:
-            # try import uvloop as Event Loop Policy
-
-            import uvloop
-            asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-        except Exception:
-            pass
-
         asyncio.run(self.main())
-        self.__collector.output_stats()
-        logger.debug('The Crawler was closed. <Reason {reason}>', reason=self.__collector.finish_reason)

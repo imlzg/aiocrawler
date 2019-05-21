@@ -1,8 +1,9 @@
 # coding: utf-8
 import os
+from uuid import uuid1
 from yarl import URL
 from typing import Union
-from ujson import loads
+from ujson import loads, dumps
 from time import time
 from asyncio import sleep
 from loguru import logger
@@ -17,8 +18,9 @@ class WebsocketConnection(object):
         self._client_session: ClientSession = None
         self._wait_timeout = 15
         self._total = 24 * 60 * 60
-        self._ws = None
+        self.websocket = None
         self.uuid: str = None
+        self.connection_uuid = uuid1()
 
     async def _build_client_session(self, url: Union[str, URL]):
         ck = CookieJar(unsafe=True)
@@ -26,8 +28,8 @@ class WebsocketConnection(object):
         self._client_session = ClientSession(cookie_jar=ck)
 
     async def close(self):
-        if self._ws and not self._ws.closed:
-            await self._ws.close()
+        if self.websocket and not self.websocket.closed:
+            await self.websocket.close()
         if self._client_session and not self._client_session.closed:
             await self._client_session.close()
 
@@ -74,20 +76,20 @@ class WebsocketConnection(object):
             if time() - start >= self._total:
                 break
 
-    async def connect(self, ip: str, port: int):
+    async def connect(self, host: str, port: int):
         """
         Connect to websocket server
-        :param ip: server ip
+        :param host: server host
         :param port: server port
         :return: WebSocketResponse
         """
-        logger.debug('Connecting to {ip}:{port}', ip=ip, port=port)
+        logger.debug('Connecting to {ip}:{port}', ip=host, port=port)
 
         uuid = os.environ.get('AIOCRAWLER_CLIENT_UUID', None)
         token = os.environ.get('AIOCRAWLER_CLIENT_TOKEN', None)
 
         if not uuid or not token:
-            data = await self._get_connection_info(ip, port)
+            data = await self._get_connection_info(host, port)
             if data:
                 uuid = data.get('uuid', None)
                 token = data.get('token', None)
@@ -96,9 +98,9 @@ class WebsocketConnection(object):
                 self.uuid = uuid
 
         if uuid and token:
-                return await self._connect(ip, port, uuid, token)
+                return await self._connect(host, port, uuid, token)
 
-        logger.error('Cannot connect to {ip}:{port}', ip=ip, port=port)
+        logger.error('Cannot connect to {ip}:{port}', ip=host, port=port)
 
     async def _connect(self, ip: str, port: int, uuid: str, token: str):
         ws_url = 'ws://{ip}:{port}/api/server/connect?uuid={uuid}&token={token}'.format(
@@ -113,3 +115,11 @@ class WebsocketConnection(object):
             return None
         else:
             return ws
+
+    async def send_json(self, info):
+        data = {
+            'uuid': self.uuid,
+            'from': self.connection_uuid,
+            'info': info
+        }
+        await self.websocket.send_str(dumps(data))
