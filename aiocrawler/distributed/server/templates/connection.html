@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+	<title>Aiocrawler Dashboard</title>
+	<meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, shrink-to-fit=no' name='viewport' />
+	<link rel="stylesheet" href="css/bootstrap.min.css">
+	<link rel="stylesheet" href="css/ready.min.css">
+</head>
+<body>
+	<div class="wrapper">
+		<div class="main-header">
+			<div class="logo-header">
+				<a href="#" class="logo">
+					Aiocrawler Dashboard
+				</a>
+			</div>
+			<nav class="navbar navbar-header navbar-expand-lg">
+				<div class="container-fluid">
+					<ul class="navbar-nav topbar-nav ml-md-auto align-items-center">
+					</ul>
+					</div>
+				</nav>
+			</div>
+			<div class="sidebar">
+				<div class="scrollbar-inner sidebar-wrapper">
+					<div class="user">
+						<div class="photo">
+							<img src="img/logo.png" alt="logo">
+						</div>
+						<div class="info">
+							<a class="" data-toggle="collapse" href="#collapseExample" aria-expanded="true">
+								<span>
+									<span id="username">Root</span>
+									<span class="user-level">Admin</span>
+									<span class="caret"></span>
+								</span>
+							</a>
+							<div class="clearfix"></div>
+
+							<div class="collapse in" id="collapseExample" aria-expanded="true" style="">
+								<ul class="nav">
+									<li>
+										<a href="setting">
+											<span class="link-collapse">Settings
+											</span>
+										</a>
+									</li>
+									<li>
+										<a href="users">
+											<span class="link-collapse">Users</span>
+										</a>
+									</li>
+								</ul>
+							</div>
+
+						</div>
+					</div>
+					<ul class="nav">
+						<li class="nav-item">
+							<a href="index">
+								<i class="la la-dashboard"></i>
+								<p>Dashboard</p>
+							</a>
+						</li>
+						<li class="nav-item active">
+							<a href="#">
+								<i class="la la-table"></i>
+								<p>Connection</p>
+								<span class="badge badge-warning" id="connection-count">0</span>
+							</a>
+						</li>
+						<li class="nav-item">
+							<a href="client">
+								<i class="la la-keyboard-o"></i>
+								<p>Cralwers</p>
+								<span class="badge badge-count" id="crawler-count">0</span>
+							</a>
+						</li>
+					</ul>
+				</div>
+			</div>
+			<div class="main-panel">
+				<div class="content">
+					<div class="container-fluid">
+						<h4 class="page-title">Connection</h4>
+                        <div class="col-md-12">
+                            <div class="card card-tasks">
+                                <div class="card-header ">
+                                    <h4 class="card-title">Connection requests</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-full-width">
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Number</th>
+                                                    <th>Request</th>
+                                                    <th>Last time</th>
+                                                    <th>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td id="td-count-1">1</td>
+                                                    <td>Planning new project structure</td>
+                                                    <td>Updated 3 minutes ago</td>
+                                                    <td class="td-actions text-right">
+                                                        <div class="form-button-action">
+                                                            <button type="button" data-toggle="tooltip" title="Edit Task" class="btn btn-link <btn-simple-primary">
+                                                                <i class="la la-edit"></i>
+                                                            </button>
+                                                            <button type="button" data-toggle="tooltip" title="Remove" class="btn btn-link btn-simple-danger">
+                                                                <i class="la la-times"></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td id="td-count-2">2</td>
+                                                    <td>Finalise the design proposal</td>
+                                                    <td>Updated 3 minutes ago</td>
+                                                    <td class="td-actions text-right">
+                                                        <div class="form-button-action">
+                                                            <button type="button" data-toggle="tooltip" title="Edit Task" class="btn btn-link <btn-simple-primary">
+                                                                <i class="la la-edit"></i>
+                                                            </button>
+                                                            <button type="button" data-toggle="tooltip" title="Remove" class="btn btn-link btn-simple-danger">
+                                                                <i class="la la-times"></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+								<div class="card-footer">
+									<nav aria-label="..." class="invisible" id="pagination">
+									  <ul class="pagination">
+										<li class="page-item disabled">
+										  <span class="page-link">Previous</span>
+										</li>
+										<li class="page-item"><a class="page-link" href="#">1</a></li>
+										<li class="page-item active">
+										  <span class="page-link">
+											2
+											<span class="sr-only">(current)</span>
+										  </span>
+										</li>
+										<li class="page-item"><a class="page-link" href="#">3</a></li>
+										<li class="page-item">
+										  <a class="page-link" href="#">Next</a>
+										</li>
+									  </ul>
+									</nav>
+								</div>
+                            </div>
+                        </div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+<script src="js/jquery.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<script src="js/connection.js"></script>
+</html>

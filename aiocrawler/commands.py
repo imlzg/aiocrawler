@@ -49,7 +49,6 @@ def main():
     args = parser.parse_args()
 
     if args.commands == "startproject" and args.project_name:
-
         tmpl = SpiderTemplate(args.project_name)
         tmpl.gen_project()
     elif args.commands == "run" and args.project_name:

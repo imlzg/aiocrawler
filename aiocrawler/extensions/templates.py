@@ -29,7 +29,6 @@ class SpiderTemplate(object):
             self.__gen_settings__()
             self.__gen_middlewares__()
             self.__gen_items__()
-            self.__gen_run__()
 
             self.__logger.success('The Project "{project_name}" was created successfully.',
                                   project_name=self.__project_name)
@@ -70,13 +69,6 @@ class SpiderTemplate(object):
         sub_data = {
             'classname': self.__project_name.capitalize() + 'Spider',
             'name': self.__project_name.lower()
-        }
-        self.gen(tmpl_name=tmpl_name, sub_data=sub_data)
-
-    def __gen_run__(self):
-        tmpl_name = 'run.tmpl'
-        sub_data = {
-            'settings_name': self.__project_name.capitalize() + 'Settings',
         }
         self.gen(tmpl_name=tmpl_name, sub_data=sub_data)
 

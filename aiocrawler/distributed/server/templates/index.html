@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+	<title>Aiocrawler Dashboard</title>
+	<meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, shrink-to-fit=no' name='viewport' />
+	<link rel="stylesheet" href="css/bootstrap.min.css">
+	<link rel="stylesheet" href="css/ready.min.css">
+</head>
+<body>
+	<div class="wrapper">
+		<div class="main-header">
+			<div class="logo-header">
+				<a href="#" class="logo">
+					Aiocrawler Dashboard
+				</a>
+			</div>
+			<nav class="navbar navbar-header navbar-expand-lg">
+				<div class="container-fluid">
+					<ul class="navbar-nav topbar-nav ml-md-auto align-items-center">
+						<li class="nav-item dropdown">
+							<a class="dropdown-toggle profile-pic" data-toggle="dropdown" href="#" aria-expanded="false">
+								<img src="img/logo_50x50.png" alt="logo" class="img-circle" width="50">
+								<span> {{username}} </span>
+							</a>
+							<ul class="dropdown-menu dropdown-user">
+								<a class="dropdown-item" href="#"><i class="ti-settings"></i> Settings</a>
+								<div class="dropdown-divider"></div>
+								<a class="dropdown-item" href="#"><i class="ti-user"></i> Users</a>
+								<div class="dropdown-divider"></div>
+								<a class="dropdown-item" href="/user/logout"><i class="fa fa-power-off"></i> Logout</a>
+							</ul>
+						</li>
+					</ul>
+				</div>
+			</nav>
+		</div>
+		<div class="sidebar">
+			<div class="scrollbar-inner sidebar-wrapper">
+				<ul class="nav nav-tabs" role="tablist">
+					<li class="nav-item active">
+						<a class="nav-link" id="dashboard-tab" data-toggle="tab" href="#" role="tab" aria-selected="true">
+							<i class="la la-dashboard"></i>
+							<p>Dashboard</p>
+						</a>
+					</li>
+					<li class="nav-item">
+						<a class="nav nav-link" id="connection-tab" data-toggle="tab" href="#" role="tab" aria-selected="false">
+							<i class="la la-gears"></i>
+							<p>Connection</p>
+							<span class="badge badge-warning" id="connection-count">0</span>
+						</a>
+					</li>
+					<li class="nav-item">
+						<a class="nav-link" id="crawler-tab" data-toggle="tab" href="#" role="tab" aria-selected="false">
+							<i class="la la-user"></i>
+							<p>Crawlers</p>
+							<span class="badge badge-count" id="crawler-num">0</span>
+						</a>
+					</li>
+					<
+				</ul>
+			</div>
+		</div>
+		<div class="main-panel">
+			<div class="content">
+				<div class="container-fluid" id="container">
+					<div class="tab-pane" id="dashboard" aria-labelledby="dashboard-tab">
+						<h4 class="page-title">Dashboard</h4>
+						<div class="row">
+							<div class="col-md-3">
+								<div class="card card-stats card-warning">
+									<div class="card-body ">
+										<div class="row">
+											<div class="col-5">
+												<div class="icon-big text-center">
+													<i class="la la-users"></i>
+												</div>
+											</div>
+											<div class="col-7 d-flex align-items-center">
+												<div class="numbers">
+													<p class="card-category">Crawlers</p>
+													<h4 class="card-title" id="crawler-count">0</h4>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-3">
+								<div class="card card-stats card-danger">
+									<div class="card-body">
+										<div class="row">
+											<div class="col-5">
+												<div class="icon-big text-center">
+													<i class="la la-users"></i>
+												</div>
+											</div>
+											<div class="col-7 d-flex align-items-center">
+												<div class="numbers">
+													<p class="card-category">Active crawlers</p>
+													<h4 class="card-title" id="active-count">0</h4>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-3">
+								<div class="card card-stats card-success">
+									<div class="card-body">
+										<div class="row">
+											<div class="col-5">
+												<div class="icon-big text-center">
+													<i class="la la-hand-lizard-o"></i>
+												</div>
+											</div>
+											<div class="col-7 d-flex align-items-center">
+												<div class="numbers">
+													<p class="card-category">Spiders</p>
+													<h4 class="card-title" id="spider-count">0</h4>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-3">
+								<div class="card card-stats card-primary">
+									<div class="card-body ">
+										<div class="row">
+											<div class="col-5">
+												<div class="icon-big text-center">
+													<i class="la la-tasks"></i>
+												</div>
+											</div>
+											<div class="col-7 d-flex align-items-center">
+												<div class="numbers">
+													<p class="card-category">Tasks</p>
+													<h4 class="card-title" id="task-count">0</h4>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-md-12">
+							<div class="card-body">
+								<div class="table-full-width">
+									<table class="table">
+									  <thead>
+										<tr>
+										  <th scope="col">#</th>
+										  <th scope="col">First</th>
+										  <th scope="col">Last</th>
+										  <th scope="col">Handle</th>
+										</tr>
+									  </thead>
+									  <tbody>
+										<tr>
+										  <th scope="row">1</th>
+										  <td>Mark</td>
+										  <td>Otto</td>
+										  <td>@mdo</td>
+										</tr>
+										<tr>
+										  <th scope="row">2</th>
+										  <td>Jacob</td>
+										  <td>Thornton</td>
+										  <td>@fat</td>
+										</tr>
+										<tr>
+										  <th scope="row">3</th>
+										  <td>Larry</td>
+										  <td>the Bird</td>
+										  <td>@twitter</td>
+										</tr>
+									  </tbody>
+									</table>
+								</div>
+							</div>
+						</div>
+					</div>
+					</div>
+					</div>
+				</div>
+			</div>
+</body>
+<script src="js/jquery.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<script src="js/bootstrap-notify.min.js"></script>
+<script src="js/aiocrawler.js"></script>
+<script src="js/index.js"></script>
+</html>

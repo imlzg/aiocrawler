@@ -181,7 +181,7 @@ class Engine(object):
 
     async def __handle_downloader_response(self, request: Request, response: Response):
         handled_data = None
-        response = self._spider.__parse_html__(request, response)
+        response = self.__downloader.__parse_html__(request, response)
         for middleware in self.__middlewares:
             handled_data = await self.__run_task(middleware.process_response(request, response))
             if handled_data:

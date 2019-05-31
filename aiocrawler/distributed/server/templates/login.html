@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<link rel="icon" href="img/favicon.ico" type="image/x-icon" />
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<title>Login</title>
+	<link rel="stylesheet" href="/css/auth.css">
+	<link rel="stylesheet" href="/css/bootstrap.min.css">
+</head>
+
+<body>
+	<div class="lowin">
+		<div class="lowin-brand">
+			<img src="/img/logo.png" alt="logo">
+		</div>
+
+		<div class="lowin-wrapper">
+			<div class="lowin-box lowin-login">
+				
+				<div class="lowin-box-inner">
+					<form method="POST" id="login-form">
+						<div class="alert alert-warning alert-dismissible fade show" role="alert" id="alert">
+								<div style="text-align: center;" id="label-text"> Sign in to dashboard </div>
+								<button type="button" class="close" aria-label="Close" id="alert-button" onclick="$('#alert').hide();">
+								  <span aria-hidden="true">&times;</span>
+								</button>
+						</div>
+						<div class="lowin-group">
+							<label>
+								Username
+								<input type="text" name="username" class="lowin-input" id="username">
+							</label>
+						</div>
+						<div class="lowin-group password-group">
+							<label>
+								Password
+								<input type="password" name="password" class="lowin-input" id="password">
+							</label>
+							<div class="custom-control custom-checkbox">
+                              <input type="checkbox" class="custom-control-input" id="togglePassword">
+                              <label class="custom-control-label" for="togglePassword">Show Password</label>
+                            </div>
+						</div>
+						<button class="lowin-btn login-btn" id="submit">
+							Sign In
+						</button>
+					</form>
+				</div>
+			</div>
+			</div>
+		</div>
+
+	<script src="/js/jquery.js"></script>
+	<script src="/js/bootstrap.min.js"></script>
+	<script src="/js/sha1.js"></script>
+	<script src="/js/aiocrawler.js"></script>
+	<script src="/js/jquery.toggle-password.min.js"></script>
+    <script src="/js/login.js"></script>
+	<script>
+		$(document).ready(() => {
+			$('#password').togglePassword({
+				el: '#togglePassword'
+			});
+		});
+	</script>
+</body>
+</html>
