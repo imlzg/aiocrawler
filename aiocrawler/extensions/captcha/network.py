@@ -13,7 +13,7 @@ from keras.optimizers import Adam
 from keras.models import Model
 from keras.callbacks import Callback
 from keras import backend
-from loguru import logger
+from aiocrawler import logger
 from string import digits, ascii_letters
 from PIL import Image
 
