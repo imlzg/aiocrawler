@@ -1,0 +1,30 @@
+# coding: utf-8
+# Date      : $date
+# PROJECT   : $project_name
+# File      : $filename
+from aiocrawler import BaseSettings
+from middlewares import $middleware_name, Async$middleware_name
+
+
+class $classname(BaseSettings):
+    PROJECT_NAME = '$project_name'
+
+    """
+    If you use the redis server as the scheduler, the REDIS_URL must be configured in this settings or the Environmental variables.
+    """
+    REDIS_URL = 'redis://user:password@redis_address:port'
+    REDIS_PROJECT_NAME = '$project_name'
+
+    CONCURRENT_REQUESTS = 32
+    CONCURRENT_WORDS = 16
+    DEFAULT_TIMEOUT = 20
+    DEFAULT_HEADERS = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'zh-CN',
+    }
+
+    DOWNLOAD_DALEY = 0
+    DOWNLOADER_MIDDLEWARES = [
+        ($middleware_name, 300),
+        (Async$middleware_name, 301)
+    ]

@@ -22,7 +22,11 @@ class WebsocketClient(object):
         self.__monitors: Dict[str, Monitor] = {}    # {spider_name: monitor}
 
     def run(self):
-        asyncio.run(self.main())
+        loop = asyncio.get_event_loop()
+        try:
+            loop.run_until_complete(self.main())
+        finally:
+            loop.close()
 
     async def close(self):
         if self._aiohttp_client_session:
@@ -178,3 +182,14 @@ class Monitor(object):
                              spider=spider,
                              collector=self.__collector,
                              job_scheduler=self.__job_scheduler)
+
+
+if __name__ == '__main__':
+    from sys import path
+
+    current = str(Path().parent.parent.parent.absolute())
+    if current not in path:
+        path.append(current)
+
+    client = WebsocketClient('localhost')
+    client.run()

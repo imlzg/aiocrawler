@@ -50,24 +50,27 @@ class WebsocketConnection(object):
         :return: connection information
         """
         start = time()
-        token_url = 'http://{server_host}:{port}/api/server/get_connect_info'.format(server_host=server_host, port=port)
         host, hostname = self._get_host_and_hostname()
-        post_data = {
-            'host': host,
-            'hostname': hostname
-        }
+        url = 'http://{server_host}:{port}/api/server/get_connect_info/{host}/{hostname}'.format(
+            server_host=server_host,
+            port=port,
+            host=host,
+            hostname=hostname
+        )
 
         if not self._client_session:
-            await self._build_client_session(token_url)
+            await self._build_client_session(url)
         while True:
             try:
-                data = {}
-                async with self._client_session.post(token_url, json=post_data) as resp:
+                async with self._client_session.get(url) as resp:
                     if resp.status != 200:
                         break
+                    # noinspection PyBroadException
                     try:
                         data = loads(await resp.text())
-                    finally:
+                    except Exception:
+                        break
+                    else:
                         status = data.get('status', None)
                         if status == 0:
                             return data

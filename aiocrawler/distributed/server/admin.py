@@ -2,12 +2,13 @@
 import asyncio
 import aiohttp_jinja2
 import aiojobs
+from typing import List, Dict
 from ujson import dumps
 from aiohttp import web
 from aiohttp_session import get_session
 from aiocrawler.distributed.server.model.user_model import UserDatabase
 from aiocrawler.distributed.common import scan_spider
-from aiocrawler.distributed.server.utils import (json_or_jsonp_response,
+from aiocrawler.distributed.server.utils import (jsonp_response,
                                                  login_required,
                                                  PERMISSIONS,
                                                  gen_token)
@@ -19,9 +20,11 @@ class Admin(object):
         self._rsa_pub: str = None
 
         self._token = {}    # {remote: token}
-        self._websocket = {}    # {token: websocket}
+        self._websocket: Dict[str, web.WebSocketResponse] = {}    # {token: websocket}
         self.__interval = 2
         self.__scheduler = job_scheduler
+
+        self.messages: List[dict] = []
 
     def routes(self):
         return [
@@ -31,19 +34,15 @@ class Admin(object):
             web.get('/user/login', self.login, name='login'),
             web.post('/api/user/login', self.login, name='login_api'),
 
-
             web.get('/api/user/nav', self.get_nav_api, name='nav_api'),
-
             web.get('/user/logout', self.logout, name='user-logout'),
 
             web.get(r'/api/user/websocket/{token}', self.websocket, name='user_websocket'),
-
-            web.get('/user/connection', self.connection, name='connection')
         ]
 
     async def register(self, request: web.Request):
         if self._user_db.is_user_exists():
-            return json_or_jsonp_response(request, {
+            return jsonp_response(request, {
                 'status': 100,
                 'msg': 'This method does not allow to visit after initialization'
             })
@@ -56,13 +55,13 @@ class Admin(object):
                 if self._user_db.is_user_exists():
                     await self.authorize_user(request, form_data['username'])
 
-                    return json_or_jsonp_response(request, {
+                    return jsonp_response(request, {
                         'status': 0,
                         'msg': 'success',
                         'url': str(request.app.router['index'].url_for())
                     })
 
-        return json_or_jsonp_response(request, {
+        return jsonp_response(request, {
             'status': 101,
             'msg': 'Something went wrong'
         })
@@ -90,13 +89,13 @@ class Admin(object):
                 if self._user_db.has_user(form_data['username'], form_data['password']):
                     await self.authorize_user(request, form_data['username'])
 
-                    return json_or_jsonp_response(request, {
+                    return jsonp_response(request, {
                         'status': 0,
                         'msg': 'success',
                         'url': str(request.app.router['index'].url_for())
                     })
 
-            return json_or_jsonp_response(request, {
+            return jsonp_response(request, {
                 'status': 200,
                 'msg': 'Username or password error'
             })
@@ -112,7 +111,7 @@ class Admin(object):
                     'username': user.username,
                     'created_at': user.created_at,
                     'permission': PERMISSIONS[user.permission],
-                    'websocket_url': str(request.app.router['user-websocket'].url_for(token=session['token']))
+                    'websocket_url': str(request.app.router['user_websocket'].url_for(token=session['token']))
                 }
             }
         else:
@@ -120,7 +119,7 @@ class Admin(object):
                 'status': 100,
                 'msg': 'username: {username} is not found'.format(username=session['username'])
             }
-        return json_or_jsonp_response(request, resp)
+        return jsonp_response(request, resp)
 
     @login_required
     async def logout(self, request: web.Request):
@@ -148,14 +147,20 @@ class Admin(object):
         else:
             return web.HTTPNotFound()
 
-    async def send_message(self, message: object):
-        tasks = [
-            self._send_json(message, websocket) for websocket in self._websocket
-        ]
-        await asyncio.wait(tasks)
+    async def __message_loop(self):
+        while True:
+            if len(self.messages) and len(self._websocket):
+                tasks = [
+                    asyncio.ensure_future(websocket.send_str(dumps({'message': message})))
+                    for message in self.messages
+                    for websocket in self._websocket.values()
+                ]
+                self.messages = []
+                await asyncio.wait(tasks)
+            await asyncio.sleep(self.__interval)
 
-    async def connection(self, request: web.Request):
-        pass
+    async def on_startup(self, _):
+        await self.__scheduler.spawn(self.__message_loop())
 
     async def on_cleanup(self, _):
         for websocket in self._websocket.values():
@@ -169,4 +174,4 @@ class Admin(object):
 
     @login_required
     async def spider_on_server(self, request: web.Request):
-        return json_or_jsonp_response(request, scan_spider())
+        return jsonp_response(request, scan_spider())

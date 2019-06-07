@@ -1,6 +1,5 @@
 # coding: utf-8
 from datetime import datetime
-from typing import List
 from aiocrawler.distributed.server.utils import gen_uuid, gen_token
 from aiocrawler.distributed.server.model.db import db
 from aiocrawler.distributed.server.utils import DATETIME_FORMAT
@@ -29,14 +28,20 @@ class ClientDatabase(object):
             ClientModel.create_table()
 
     @staticmethod
-    def create_client(ip: str, host: str, hostname: str):
+    def create_client(uuid: str, ip: str, host: str, hostname: str):
         ClientModel.replace({
             ClientModel.remote_ip: ip,
             ClientModel.host: host,
             ClientModel.hostname: hostname,
-            ClientModel.uuid: gen_uuid(ip, host, hostname),
-            ClientModel.connected_at: datetime.now().strftime(DATETIME_FORMAT)
+            ClientModel.uuid: uuid,
+            ClientModel.connected_at: datetime.now().strftime(DATETIME_FORMAT),
         }).execute()
+
+    @staticmethod
+    def update(uuid: str):
+        ClientModel.update({
+            ClientModel.connected_at: datetime.now().strftime(DATETIME_FORMAT)
+        }).where(ClientModel.uuid == uuid).execute()
 
     @staticmethod
     def get_client_info(uuid: str) -> ClientModel:
@@ -79,21 +84,18 @@ class ClientDatabase(object):
         ClientModel.update({ClientModel.status: status}).where(ClientModel.uuid == uuid).execute()
 
     @staticmethod
-    def get_unverified_client() -> List[ClientModel]:
-        client_list = ClientModel.select().where(ClientModel.token.is_null() is True).execute()
-        return client_list
+    def get_unverified_client():
+        data = ClientModel.select().where(ClientModel.token.is_null())
+        return data
 
     @staticmethod
-    def get_verified_client() -> List[ClientModel]:
-        client_list = ClientModel.select().where(ClientModel.token.is_null() is False).execute()
-        return client_list
+    def get_verified_client():
+        data = ClientModel.select().where(ClientModel.token.is_null(False))
+        return data
 
     @staticmethod
-    def get_unverified_client_count() -> int:
-        count = ClientModel.select().where(ClientModel.token.is_null() is True).count()
-        return count
-
-    @staticmethod
-    def get_verified_client_count() -> int:
-        count = ClientModel.select().where(ClientModel.token.is_null() is False).count()
-        return count
+    def remove_client(uuid):
+        try:
+            ClientModel.delete().where(ClientModel.uuid == uuid).execute()
+        except Exception as e:
+            return e

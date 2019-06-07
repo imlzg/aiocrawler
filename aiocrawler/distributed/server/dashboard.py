@@ -1,4 +1,5 @@
 import sys
+import asyncio
 import aiojobs
 from pathlib import Path
 from base64 import urlsafe_b64decode
@@ -10,8 +11,6 @@ import aiohttp_jinja2
 import aiohttp_session
 from aiocrawler import logger
 from aiohttp import web
-from aiohttp.web_request import Request
-from aiohttp_session import get_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
 from jinja2 import FileSystemLoader
@@ -31,20 +30,21 @@ async def status404(request, handler):
 
 class Dashboard(object):
     def __init__(self):
-        self.__job_scheduler: aiojobs.Scheduler = None
+        self.__job_scheduler: aiojobs.Scheduler = aiojobs.Scheduler(close_timeout=0.1,
+                                                                    limit=None,
+                                                                    pending_limit=10000,
+                                                                    exception_handler=None,
+                                                                    loop=asyncio.get_event_loop())
 
-    @aiohttp_jinja2.template("index.html")
     @login_required
-    async def index(self, request: Request):
-        """
-        index page
-        :param request: web request
-        :return:
-        """
-        session = await get_session(request)
-        return {
-            "username": session["username"]
-        }
+    @aiohttp_jinja2.template("index.html")
+    async def index(self, _):
+        return {}
+
+    @login_required
+    @aiohttp_jinja2.template('connection.html')
+    async def connection(self, _):
+        return {}
 
     def create_app(self) -> web.Application:
         """
@@ -58,18 +58,18 @@ class Dashboard(object):
 
         aiohttp_jinja2.setup(app, loader=FileSystemLoader('templates'))
 
-        server = WebsocketServer(job_scheduler=self.__job_scheduler)
+        admin = Admin(job_scheduler=self.__job_scheduler)
+        app.add_routes(admin.routes())
+        app.on_startup.append(admin.on_startup)
+        app.on_cleanup.append(admin.on_cleanup)
+
+        server = WebsocketServer(job_scheduler=self.__job_scheduler, admin=admin)
         app.add_routes(server.routes())
         app.on_cleanup.append(server.close_ws_client)
 
-        admin = Admin(server)
-        app.add_routes(admin.routes())
-        # app.on_startup.append(admin.on_startup)
-        app.on_startup.append(self.on_startup)
-        app.on_cleanup.append(admin.on_cleanup)
-
         app.add_routes([
             web.get('/index', self.index, name='index'),
+            web.get('/connection', self.connection, name='connection'),
             web.get('/', self.index),
             web.static('/css', 'templates/css'),
             web.static('/fonts', 'templates/fonts'),
@@ -79,9 +79,6 @@ class Dashboard(object):
             web.static('/sass', 'templates/sass')
         ])
         return app
-
-    async def on_startup(self, _):
-        self.__job_scheduler = await aiojobs.create_scheduler(limit=None)
 
     def run(self):
         current_dir = str(Path().absolute())
