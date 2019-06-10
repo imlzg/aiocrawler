@@ -7,6 +7,7 @@ from shutil import unpack_archive
 from typing import Optional, Dict
 from aiohttp import ClientSession, CookieJar
 from aiocrawler.engine import Engine
+from aiocrawler.log import logger
 from aiocrawler.utils import get_setting, get_spider
 from aiocrawler.distributed.common import SPIDER_DIR, scan_spider
 from aiocrawler.distributed.client.client_collector import ClientCollector
@@ -37,8 +38,7 @@ class WebsocketClient(object):
     async def main(self):
         try:
             self._job_scheduler = await aiojobs.create_scheduler(limit=None)
-            await self._conn.connect()
-            if self._conn.websocket is None:
+            if not await self._conn.connect():
                 return
 
             await self._interactive_loop()
@@ -46,6 +46,7 @@ class WebsocketClient(object):
             await self.close()
 
     async def _interactive_loop(self):
+        logger.debug('Starting interactive loop...')
         async for msg in self._conn.websocket:
             # noinspection PyBroadException
             try:

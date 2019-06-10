@@ -1,6 +1,6 @@
 # coding: utf-8
 from datetime import datetime
-from aiocrawler.distributed.server.utils import gen_uuid, gen_token
+from aiocrawler.distributed.server.utils import gen_token
 from aiocrawler.distributed.server.model.db import db
 from aiocrawler.distributed.server.utils import DATETIME_FORMAT
 from peewee import Model, CharField, DateTimeField, PrimaryKeyField, IntegerField
@@ -20,6 +20,15 @@ class ClientModel(Model):
     class Meta:
         database = db
         table_name = 'client'
+
+
+class BlacklistModel(Model):
+    remote = CharField(max_length=16, unique=True)
+    start_time = IntegerField()
+
+    class Meta:
+        database = db
+        table_name = 'blacklist'
 
 
 class ClientDatabase(object):
@@ -49,7 +58,7 @@ class ClientDatabase(object):
         return client
 
     @staticmethod
-    def set_token(uuid: str):
+    def auth(uuid: str):
         client = ClientModel.get_or_none(ClientModel.uuid == uuid)
         if not client:
             return None
@@ -58,7 +67,10 @@ class ClientDatabase(object):
             return client.token
 
         token = gen_token()
-        ClientModel.update({ClientModel.token: token}).where(ClientModel.uuid == uuid).execute()
+        ClientModel.update({
+            ClientModel.token: token,
+            ClientModel.authorized_at: datetime.now().strftime(DATETIME_FORMAT)
+        }).where(ClientModel.uuid == uuid).execute()
         return token
 
     @staticmethod

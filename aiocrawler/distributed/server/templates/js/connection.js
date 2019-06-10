@@ -1,38 +1,38 @@
-let connection_table = $('#connection-table');
+let connectionTable = $('#connection-table');
 
 function tableAction(action, params){
     let url = '';
     if (action === 'agree')
-        url = '/api/server/verify/' + params['uuid'];
+        url = '/api/server/auth/' + params['uuid'];
     else if (action === 'ban')
         url = '/api/server/put_into_blacklist/' + params['remote'];
     else
         url = '/api/server/remove_client/' + params['uuid'];
     $.ajax({
-    url: url,
-    method: 'GET',
-    dataType: 'jsonp',
-    success: (data) => {
-        if (data['status'] === 0)
-        {
-            if (data['statues'] === 0)
-            {
-                notify({msg: data['msg']});
-                connection_table.bootstrapTable('remove', {field: 'uuid', values: params['uuid']});
-            }else{
-                notify({msg: data['msg']});
-            }
-        }
-    }
-});
+		url: url,
+		method: 'GET',
+		dataType: 'jsonp',
+		success: (data) => {
+			if (data['status'] === 0)
+			{
+				if (data['status'] === 0)
+				{
+					getHeader();
+					connectionTable.bootstrapTable('remove', {field: 'uuid', values: params['uuid']});
+					notify({msg: data['msg']});
+				}else{
+					notify({msg: data['msg']});
+				}
+			}
+		}
+	});
 }
 
 $(document).ready(() => {
-    	connection_table.bootstrapTable({
+    	connectionTable.bootstrapTable({
 			url: '/api/server/get_unverified',
 			method: 'GET',
 			dataType: 'jsonp',
-			checkboxEnabled: true,
 			striped: true,
 			cache: false,
 			pagination: true,
@@ -41,12 +41,9 @@ $(document).ready(() => {
 			pageSize: 5,
 			pageList: [10, 25, 50, 100],
 			search: false,
-			idField: 'uuid',
 			showRefresh: true,
 			showColumns: true,
 			clickToSelect: true,
-			uniqueId: 'uuid',
-			singleSelect: true,
 			queryParamsType: '',
 			queryParams: (params) => {
 				return {
@@ -56,16 +53,16 @@ $(document).ready(() => {
 			},
 			columns: [
 				{
-					field: 'uuid',
-					title: 'UUID',
+					field: 'id',
+					title: 'ID',
 					align: 'center',
 					formatter: (value, row) => {
-						return row.uuid;
+						return row.id;
 					}
 				},
 				{
 					field: 'remote',
-					title: 'Remote IP',
+					title: 'Remote Host',
 					align: 'center',
 					formatter: (value, row) => {
 						return row.remote;
@@ -73,18 +70,10 @@ $(document).ready(() => {
 				},
 				{
 					field: 'host',
-					title: 'Host',
+					title: 'Host/Hostname',
 					align: 'center',
 					formatter: (value, row) => {
-						return row.host;
-					}
-				},
-				{
-					filed: 'hostname',
-					title: 'Hostname',
-					align: 'center',
-					formatter: (value, row) => {
-						return row.hostname;
+						return row.host + '/' + row.hostname;
 					}
 				},
 				{
@@ -92,17 +81,18 @@ $(document).ready(() => {
 					title: 'Last Request',
 					align: 'center',
 					formatter: (value, row) => {
-						return new Date(parseInt(row.last) * 1000).toDateString();
+						return row.last;
 					}
 				},
 				{
 					field: 'action',
 					title: 'Action',
+					align: 'center',
 					formatter: (value, row) => {
 						let data = '';
-						data += "<a href= '#' onclick='tableAction(\"agree\", " + JSON.stringify({uuid: row.uuid}) + ");'><i class='fa fa-check-circle-o'></i> Agree</a>\t";
-						data += "<a href= '#' onclick='tableAction(\"ban\", " + JSON.stringify({uuid: row.uuid, remote: row.remote}) + ")'><i class='fa fa-ban'></i> Ban</a>\t";
-						data += "<a href= '#' onclick='tableAction(\"remove\", " + JSON.stringify({uuid: row.uuid}) + ")'><i class='fa fa-remove'></i> Remove</a>";
+						data += "<button class='btn btn-primary' onclick='tableAction(\"agree\", " + JSON.stringify({id: row.id, uuid: row.uuid}) + ");'><i class='fa fa-check-circle-o'></i> Agree</button>\t";
+						data += "<button  class='btn btn-warning' onclick='tableAction(\"ban\", " + JSON.stringify({id: row.id, remote: row.remote}) + ")'><i class='fa fa-ban'></i> Ban</button>\t";
+						data += "<button  class='btn btn-danger' onclick='tableAction(\"remove\", " + JSON.stringify({id: row.id, uuid: row.uuid}) + ")'><i class='fa fa-remove'></i> Remove</button>";
 						return data;
 					}
 				}

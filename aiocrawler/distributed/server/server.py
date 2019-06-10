@@ -1,16 +1,17 @@
 # coding: utf-8
+import re
 import asyncio
 import aiojobs
 import aiohttp_jinja2
 from aiohttp import web
 from ujson import loads
-from typing import Dict, List
+from typing import Dict
 from time import time
-from math import ceil
+from datetime import datetime
 from aiohttp_session import get_session
 from aiocrawler.distributed.server.admin import Admin
 from aiocrawler.distributed.client.client_collector import ClientCollector
-from aiocrawler.distributed.server.utils import login_required, jsonp_response, gen_uuid
+from aiocrawler.distributed.server.utils import login_required, jsonp_response, gen_uuid, DATETIME_FORMAT
 from aiocrawler.distributed.server.model.client_model import ClientDatabase
 from aiocrawler.distributed.server.model.task_model import TaskDatabase
 
@@ -61,13 +62,16 @@ class WebsocketServer(object):
         self.__unverified_clients = self.client_db.get_unverified_client()
         self.__paginate_by = 5
 
+        self.__ip_pattern = r'(?=(\b|\D))(((\d{1,2})|(1\d{1,2})'
+        self.__ip_pattern += r'|(2[0-4]\d)|(25[0-5]))\.){3}((\d{1,2})|(1\d{1,2})|(2[0-4]\d)|(25[0-5]))(?=(\b|\D))'
+
     def routes(self):
         return [
-            web.get('/api/server/verify/{uuid}', self.verify_api, name='verify'),
-            web.get('/api/server/unverified/{uuid}', self.unverified_api, name='unverified'),
+            web.get('/api/server/auth/{uuid}', self.auth_api, name='verify'),
+            web.get('/api/server/deauth/{uuid}', self.deauth_api, name='unverified'),
 
-            web.get('/api/server/connect/{token}/{uuid}/{session_id}', self.connect_to_websocket, name='connect'),
-            web.get('/api/server/get_connect_info/{host}/{hostname}',
+            web.get('/api/server/connect/{uuid}/{token}/{session_id}', self.connect_to_websocket, name='connect'),
+            web.get('/api/server/get_connection_info/{host}/{hostname}',
                     self.get_websocket_token, name='get_websocket_token'),
 
             web.get('/api/server/get_verified', self.get_verified_client_api, name='get_verified'),
@@ -77,7 +81,7 @@ class WebsocketServer(object):
             web.get('/api/server/remove_remote_from_blacklist/{remote}', self.remove_remote_from_blacklist,
                     name='remove'),
 
-            web.get('/api/server/remove_client', self.remove_client_api, name='remove_client'),
+            web.get('/api/server/remove_client/{uuid}', self.remove_client_api, name='remove_client'),
             web.get('/common/header', self.get_header, name='header')
 
         ]
@@ -101,26 +105,27 @@ class WebsocketServer(object):
                 if uuid not in self.ws_client:
                     self.ws_client[uuid] = {}
                 self.ws_client[uuid][session_id] = websocket
+                self.client_db.set_status(uuid=uuid, status=1)
                 await self.receive(websocket)
                 self.ws_client[uuid].pop(session_id, None)
+                self.client_db.set_status(uuid=uuid, status=0)
                 return websocket
-        else:
-            return web.HTTPNotFound()
 
     async def close_ws_client(self, _):
         """
         close websocket client on cleanup
         :param _:
         """
-        for ws_list in self.ws_client.values():
+        for uuid, ws_list in self.ws_client.items():
             for ws in ws_list.values():
                 if not ws.closed:
                     await ws.close()
+                    self.client_db.set_status(uuid=uuid, status=0)
 
     @login_required
-    async def verify_api(self, request: web.Request):
+    async def auth_api(self, request: web.Request):
         uuid = request.match_info.get('uuid', None)
-        token = self.client_db.set_token(uuid)
+        token = self.client_db.auth(uuid)
         if token:
             return jsonp_response(request, {
                 'status': 0,
@@ -133,7 +138,7 @@ class WebsocketServer(object):
             })
 
     @login_required
-    async def unverified_api(self, request: web.Request):
+    async def deauth_api(self, request: web.Request):
         uuid = request.match_info.get('uuid', None)
         check = self.client_db.clear_token(uuid)
         if check:
@@ -160,7 +165,7 @@ class WebsocketServer(object):
             else:
                 return jsonp_response(request, {
                     'status': 0,
-                    'msg': 'Delete the uuid: {uuid} successfully'
+                    'msg': 'Delete the uuid: {uuid} successfully'.format(uuid=uuid)
                 })
         else:
             return jsonp_response(request, {
@@ -176,11 +181,12 @@ class WebsocketServer(object):
         total = self.__unverified_clients.count()
         # total = int(ceil(self.__unverified_clients.count() / page_size))
         rows = [{
+            'id': one.client_id,
             'uuid': one.uuid,
             'remote': one.remote_ip,
             'host': one.host,
             'hostname': one.hostname,
-            'last': one.connected_at
+            'last': one.connected_at.strftime(DATETIME_FORMAT)
         } for one in self.__unverified_clients.paginate(page_number, page_size)]
 
         return jsonp_response(request, {
@@ -190,44 +196,42 @@ class WebsocketServer(object):
 
     @login_required
     async def get_verified_client_api(self, request: web.Request):
-        pages = int(ceil(self.__unverified_clients.count() / self.__paginate_by))
-        page = request.match_info.get('page', 1)
-        if 1 <= page <= pages:
-            data = self.__verified_clients.paginate(page=page, paginate_by=self.__paginate_by)
-            data = [{
-                'uuid': one.uuid,
-                'remote': one.remote_ip,
-                'host': one.host,
-                'hostname': one.hostname,
-                'token': one.token
-            } for one in data]
-            return jsonp_response(request, {
-                'status': 0,
-                'total': self.__verified_clients.count(),
-                'page': page,
-                'data': data
-            })
-        else:
-            return jsonp_response(request, {
-                'status': 100,
-                'msg': 'page: {page} is out of range'.format(page=page)
-            })
+        page_number = int(request.query.get('pageNumber', '1'))
+        page_size = int(request.query.get('pageSize', '5'))
+
+        total = self.__verified_clients.count()
+        rows = [{
+            'id': one.client_id,
+            'uuid': one.uuid,
+            'remote': one.remote_ip,
+            'host': one.host,
+            'hostname': one.hostname,
+            'status': one.status,
+            'authorized_at': one.authorized_at.strftime(DATETIME_FORMAT)
+
+        } for one in self.__verified_clients.paginate(page_number, page_size)]
+
+        return jsonp_response(request, {
+            'total': total,
+            'rows': rows
+        })
 
     @login_required
     async def put_into_blacklist(self, request: web.Request):
-        remote_ip = request.match_info.get('remote')
-        if remote_ip in self.__blacklist:
+        remote_host = request.match_info.get('remote')
+
+        if remote_host in self.__blacklist:
             return jsonp_response(request, {
                 'status': 1,
-                'start_time': self.__blacklist[remote_ip],
-                'msg': '{remote} has been banned'.format(remote=remote_ip)
+                'start_time': self.__blacklist[remote_host],
+                'msg': '{remote} has been banned'.format(remote=remote_host)
             })
 
-        self.__blacklist[remote_ip] = int(time())
+        self.__blacklist[remote_host] = int(time())
         return jsonp_response(request, {
             'status': 0,
-            'start_time': self.__blacklist[remote_ip],
-            'msg': '{remote} is banned'.format(remote=remote_ip)
+            'start_time': datetime.fromtimestamp(self.__blacklist[remote_host]).strftime(DATETIME_FORMAT),
+            'msg': '{remote} is banned'.format(remote=remote_host)
         })
 
     @login_required
@@ -245,7 +249,8 @@ class WebsocketServer(object):
             })
 
     async def get_websocket_token(self, request: web.Request):
-        if self.is_ban(request.remote) or 'host' not in request.match_info or 'hostname' not in request.match_info:
+        if self.is_ban(request.remote) or 'host' not in request.match_info \
+                or 'hostname' not in request.match_info or not re.match(self.__ip_pattern, request.match_info['host']):
             return web.HTTPNotFound()
 
         uuid = gen_uuid(request.remote, request.match_info['host'], request.match_info['hostname'])
@@ -296,7 +301,9 @@ class WebsocketServer(object):
         header = aiohttp_jinja2.render_template('header.html', request, {
             'username': session['username'],
             'connection_count': self.__unverified_clients.count(),
-            'crawler_count': self.__verified_clients.count()
+            'crawler_count': self.__verified_clients.count(),
+            'spider_count': 0,
+            'task_count': 0
         }).body.decode()
         return jsonp_response(request, {
             'status': 0,

@@ -15,8 +15,8 @@ function notify(message){
     });
 }
 
-$(document).ready(() => {
-    $.ajax({
+function getHeader(){
+        $.ajax({
         url: '/common/header',
         method: 'GET',
         dataType: 'jsonp',
@@ -30,6 +30,8 @@ $(document).ready(() => {
                     $('#connection-li').addClass('nav-item active');
                 else if (pathname === '/crawler')
                     $('#crawler-li').addClass('nav-item active');
+                else if (pathname === '/spider')
+                    $('#spider-li').addClass('nav-item active');
             }
             else
                 notify({msg: data['msg']});
@@ -38,8 +40,10 @@ $(document).ready(() => {
             notify({msg: 'Failed to get header', type: 'danger'});
         }
     });
+}
 
-    $.ajax({
+function websocket(){
+        $.ajax({
         url: '/api/user/nav',
         method: 'get',
         dataType: 'jsonp',
@@ -61,5 +65,9 @@ $(document).ready(() => {
             notify({msg: 'Failed to connect websocket', type: 'danger'});
         }
     });
-});
+}
 
+$(document).ready(() => {
+    getHeader();
+    websocket();
+});

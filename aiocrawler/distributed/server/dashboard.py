@@ -37,14 +37,16 @@ class Dashboard(object):
                                                                     loop=asyncio.get_event_loop())
 
     @login_required
-    @aiohttp_jinja2.template("index.html")
-    async def index(self, _):
-        return {}
+    async def index(self, request: web.Request):
+        return aiohttp_jinja2.render_template('index.html', request, {})
 
     @login_required
-    @aiohttp_jinja2.template('connection.html')
-    async def connection(self, _):
-        return {}
+    async def connection(self, request: web.Request):
+        return aiohttp_jinja2.render_template('connection.html', request, {})
+
+    @login_required
+    async def crawlers(self, request: web.Request):
+        return aiohttp_jinja2.render_template('crawlers.html', request, {})
 
     def create_app(self) -> web.Application:
         """
@@ -70,6 +72,7 @@ class Dashboard(object):
         app.add_routes([
             web.get('/index', self.index, name='index'),
             web.get('/connection', self.connection, name='connection'),
+            web.get('/crawler', self.crawlers, name='crawlers'),
             web.get('/', self.index),
             web.static('/css', 'templates/css'),
             web.static('/fonts', 'templates/fonts'),
@@ -81,14 +84,13 @@ class Dashboard(object):
         return app
 
     def run(self):
-        current_dir = str(Path().absolute())
-        if current_dir not in sys.path:
-            sys.path.append(current_dir)
-
         app = self.create_app()
         web.run_app(app, host='0.0.0.0', port=8989, print=logger.debug)
 
 
 if __name__ == '__main__':
+    current_dir = str(Path().absolute())
+    if current_dir not in sys.path:
+        sys.path.append(current_dir)
     d = Dashboard()
     d.run()

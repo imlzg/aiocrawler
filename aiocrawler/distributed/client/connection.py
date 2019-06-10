@@ -51,13 +51,13 @@ class WebsocketConnection(object):
         """
         start = time()
         host, hostname = self._get_host_and_hostname()
-        url = 'http://{server_host}:{port}/api/server/get_connect_info/{host}/{hostname}'.format(
+        url = 'http://{server_host}:{port}/api/server/get_connection_info/{host}/{hostname}'.format(
             server_host=server_host,
             port=port,
             host=host,
             hostname=hostname
         )
-
+        logger.info(url)
         if not self._client_session:
             await self._build_client_session(url)
         while True:
@@ -105,12 +105,14 @@ class WebsocketConnection(object):
                 self.uuid = uuid
 
         if uuid and token:
-                self.websocket = await self._connect(self.__server_host, self.__port, uuid, token)
+            self.websocket = await self._connect(self.__server_host, self.__port, uuid, token)
+            logger.success('Connected to {server_host}:{port}', server_host=self.__server_host, port=self.__port)
+            return True
 
         logger.error('Cannot connect to {server_host}:{port}', server_host=self.__server_host, port=self.__port)
 
     async def _connect(self, server_host: str, port: int, uuid: str, token: str):
-        ws_url = 'ws://{server_host}:{port}/api/server/connect/{token}/{uuid}/{session_id}'.format(
+        ws_url = 'ws://{server_host}:{port}/api/server/connect/{uuid}/{token}/{session_id}'.format(
             server_host=server_host,
             port=port,
             uuid=uuid,
@@ -118,7 +120,7 @@ class WebsocketConnection(object):
             session_id=self.session_id
         )
         try:
-            websocket = await self._client_session.ws_connect(ws_url)
+            websocket = await self._client_session.ws_connect(ws_url, timeout=30)
         except (ClientConnectionError, WSServerHandshakeError):
             return None
         else:

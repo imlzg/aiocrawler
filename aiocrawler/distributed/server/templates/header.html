@@ -15,7 +15,7 @@
                     <ul class="dropdown-menu dropdown-user">
                         <a class="dropdown-item" href="#"><i class="fa fa-gears"></i> Settings</a>
                         <div class="dropdown-divider"></div>
-                        <a class="dropdown-item" href="#"><i class="fa fa-user-o""></i> Users</a>
+                        <a class="dropdown-item" href="#"><i class="fa fa-user"></i> Users</a>
                         <div class="dropdown-divider"></div>
                         <a class="dropdown-item" href="/user/logout"><i class="fa fa-power-off"></i> Logout</a>
                     </ul>
@@ -29,25 +29,38 @@
         <ul class="nav nav-tabs" role="tablist">
             <li class="nav-item" id="dashboard-li">
                 <a class="nav-link" href="index" role="tab" aria-selected="true">
-                    <i class="la la-dashboard"></i>
+                    <i class="fa fa-dashboard"></i>
                     <p>Dashboard</p>
                 </a>
             </li>
             <li class="nav-item" id="connection-li">
                 <a class="nav nav-link" href="connection" role="tab" aria-selected="false">
-                    <i class="la la-gears"></i>
+                    <i class="fa fa-connectdevelop"></i>
                     <p>Connection</p>
-                    <span class="badge badge-warning">{{ connection_count }}</span>
+                    <span class="badge badge-warning" id="connection-count">{{ connection_count }}</span>
                 </a>
             </li>
             <li class="nav-item" id="crawler-li">
-                <a class="nav-link" id="crawler-tab" data-toggle="tab" href="#" role="tab" aria-selected="false">
-                    <i class="la la-user"></i>
-                    <p>Crawlers</p>
-                    <span class="badge badge-count"">{{ crawler_count }}</span>
+                <a class="nav-link" href="crawler" role="tab" aria-selected="false">
+                    <i class="fa fa-user"></i>
+                    <p>Crawler</p>
+                    <span class="badge badge-count" id="crawler-count">{{ crawler_count }}</span>
                 </a>
             </li>
-            <
+            <li class="nav-item" id="spider-li">
+                <a class="nav-link" href="spider" role="tab">
+                    <i class="fa fa-bug"></i>
+                    <p>Spider</p>
+                    <span class="badge badge-count" id="spider-count">{{ spider_count }}</span>
+                </a>
+            </li>
+            <li class="nav-item" id="task-li">
+                <a class="nav-link" href="spider" role="tab">
+                    <i class="fa fa-tasks"></i>
+                    <p>Task</p>
+                    <span class="badge badge-count" id="task-count">{{ task_count }}</span>
+                </a>
+            </li>
         </ul>
     </div>
 </div>
