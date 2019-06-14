@@ -1,4 +1,4 @@
-let crawlerTable = $('#crawlers-table');
+let crawlerTable = $('#crawler-table');
 
 function remove(params){
     $.ajax({
@@ -8,6 +8,7 @@ function remove(params){
         success: (data) => {
             if (data['status'] === 0)
             {
+                updateHeaderInfo();
                 notify({msg: data['msg'], type: 'success'});
                 crawlerTable.bootstrapTable('remove', {field: 'id', values: params['id']});
             }
@@ -17,7 +18,7 @@ function remove(params){
     });
 }
 
-$(document).ready(() => {
+function createCrawlerTable(){
     let statusString = ['disconnect', 'connected', 'error'];
     let buttonClass = ['btn btn-secondary', 'btn btn-success', 'btn btn-danger'];
 
@@ -25,6 +26,7 @@ $(document).ready(() => {
         url: '/api/server/get_verified',
         method: 'GET',
         dataType: 'jsonp',
+        classes: 'table-borderless',
         clickToSelect: true,
         stripped: true,
         cache: false,
@@ -98,4 +100,8 @@ $(document).ready(() => {
             }
         ]
     });
+}
+
+$(document).ready(() => {
+    createCrawlerTable();
 });

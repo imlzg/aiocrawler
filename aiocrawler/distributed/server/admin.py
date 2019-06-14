@@ -7,7 +7,6 @@ from ujson import dumps
 from aiohttp import web
 from aiohttp_session import get_session
 from aiocrawler.distributed.server.model.user_model import UserDatabase
-from aiocrawler.distributed.common import scan_spider
 from aiocrawler.distributed.server.utils import (jsonp_response,
                                                  login_required,
                                                  PERMISSIONS,
@@ -38,6 +37,7 @@ class Admin(object):
             web.get('/user/logout', self.logout, name='user-logout'),
 
             web.get(r'/api/user/websocket/{token}', self.websocket, name='user_websocket'),
+
         ]
 
     async def register(self, request: web.Request):

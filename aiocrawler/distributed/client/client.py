@@ -168,8 +168,8 @@ class Monitor(object):
             }, classname=self.__class__.__name__)
 
     async def create_engine(self):
-        settings = get_setting(module_name=''.join([self.__package, 'settings']))
-        spider = get_spider(classname=self.__spider_classname, module_name='.'.join([self.__package, 'spiders']))
+        settings = get_setting(module=''.join([self.__package, 'settings']))
+        spider = get_spider(classname=self.__spider_classname, module='.'.join([self.__package, 'spiders']))
 
         if not settings or not spider:
             await self.__conn.send_json({

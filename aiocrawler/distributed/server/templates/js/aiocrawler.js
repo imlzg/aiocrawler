@@ -17,7 +17,7 @@ function notify(message){
 
 function getHeader(){
         $.ajax({
-        url: '/common/header',
+        url: '/api/server/get_header',
         method: 'GET',
         dataType: 'jsonp',
         success: (data) => {
@@ -30,14 +30,35 @@ function getHeader(){
                     $('#connection-li').addClass('nav-item active');
                 else if (pathname === '/crawler')
                     $('#crawler-li').addClass('nav-item active');
-                else if (pathname === '/spider')
+                else if (pathname === '/project')
                     $('#spider-li').addClass('nav-item active');
+                else if (pathname === '/task')
+                    $('#task-li').addClass('nav-item active');
             }
             else
                 notify({msg: data['msg']});
         },
         error: () => {
             notify({msg: 'Failed to get header', type: 'danger'});
+        }
+    });
+}
+
+function updateHeaderInfo() {
+    $.ajax({
+        url: '/api/server/get_info',
+        dataType: 'jsonp',
+        method: 'GET',
+        success: (data) => {
+            if (data['status'] === 0){
+                $('#connection_count').text(data['connection_count']);
+                $('#crawler_count').text(data['crawler_count']);
+                $('#project_count').text(data['project_count']);
+                $('#task_count').text(data['task_count']);
+            }
+            else{
+                notify({msg: data['msg']});
+            }
         }
     });
 }
@@ -56,6 +77,7 @@ function websocket(){
                 websocket.onmessage = (data) => {
                   let jsonData = JSON.parse(data.data);
                   if ('message' in jsonData){
+                      updateHeaderInfo();
                       notify(jsonData['message']);
                   }
                 };

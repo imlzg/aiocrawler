@@ -14,7 +14,7 @@ class AllowedCodesMiddleware(BaseMiddleware):
         if not 200 <= response.status <= 301 and response.status not in self.settings.ALLOWED_CODES:
             self.logger.debug('The response status <{code}> is not in ALLOWED_CODES', code=response.status)
 
-            retry_count = request.meta.login_get('retry_count', 0)
+            retry_count = request.meta.get('retry_count', 0)
             retry_count += 1
 
             request.meta['retry_count'] = retry_count

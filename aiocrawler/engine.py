@@ -86,7 +86,10 @@ class Engine(object):
 
         if not self.__downloader:
             from aiocrawler.downloaders.aio_downloader import AioDownloader
-            self.__downloader = AioDownloader(self._settings)
+            from aiohttp import ClientSession, CookieJar
+            session = ClientSession(cookie_jar=CookieJar(unsafe=True))
+            self.__downloader = AioDownloader(self._settings, session)
+            self.on_cleanup(session.close)
 
         if not self._scheduler:
             if self._settings.REDIS_URL and not self._settings.DISABLE_REDIS:
@@ -336,4 +339,8 @@ class Engine(object):
         await main_job.close()
 
     def run(self):
-        asyncio.run(self.main())
+        loop = asyncio.get_event_loop()
+        try:
+            loop.run_until_complete(self.main())
+        finally:
+            loop.close()

@@ -1,4 +1,5 @@
 # coding: utf-8
+from typing import Any
 
 
 class Request(dict):
@@ -6,6 +7,7 @@ class Request(dict):
                  method: str = 'GET',
                  callback=None,
                  params: dict = None,
+                 data: Any = None,
                  dont_filter: bool = False,
                  proxy: str = None,
                  encoding: str = None,
@@ -20,10 +22,11 @@ class Request(dict):
         self['placeholder'] = None
 
         self.url = url
-        self.method = method if method in ['GET', 'POST'] else 'GET'
+        self.method = method if method in ('GET', 'POST') else 'GET'
         self.proxy = proxy
         self.dont_filter = dont_filter
         self.params = params
+        self.data = data
 
         self.callback = callback
         self.err_callback = err_callback
@@ -35,7 +38,4 @@ class Request(dict):
         self.cookies = cookies
         self.meta = meta
 
-        if format_type in ['text', 'json', 'selector']:
-            self.handle_way = format_type
-        else:
-            self.handle_way = 'selector'
+        self.handle_way = format_type if format_type in ('text', 'json', 'selector') else 'selector'

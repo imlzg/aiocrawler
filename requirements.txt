@@ -12,3 +12,4 @@ ujson
 jinja2
 cryptography
 peewee
+fake-useragent

@@ -1,4 +1,4 @@
-from aiocrawler.distributed.server.dashboard import Dashboard
+from aiocrawler.distributed.server.main import Dashboard
 
 
 __all__ = [

@@ -5,11 +5,14 @@ import aiojobs
 import aiohttp_jinja2
 from aiohttp import web
 from ujson import loads
-from typing import Dict
+from typing import Dict, Union
 from time import time
+from pathlib import Path
 from datetime import datetime
 from aiohttp_session import get_session
 from aiocrawler.distributed.server.admin import Admin
+from aiocrawler.distributed.common import scan
+from aiocrawler.distributed.server.utils import gen_token
 from aiocrawler.distributed.client.client_collector import ClientCollector
 from aiocrawler.distributed.server.utils import login_required, jsonp_response, gen_uuid, DATETIME_FORMAT
 from aiocrawler.distributed.server.model.client_model import ClientDatabase
@@ -17,9 +20,11 @@ from aiocrawler.distributed.server.model.task_model import TaskDatabase
 
 
 class WebsocketServer(object):
-    def __init__(self, job_scheduler: aiojobs.Scheduler, admin: Admin):
+    def __init__(self, job_scheduler: aiojobs.Scheduler, admin: Admin, project_dir: Union[str, Path]):
         self.__admin = admin
         self.__job_scheduler = job_scheduler
+        self.__project_dir = Path(project_dir)
+
         self.client_db = ClientDatabase()
         self.task_db = TaskDatabase()
 
@@ -60,6 +65,8 @@ class WebsocketServer(object):
 
         self.__verified_clients = self.client_db.get_verified_client()
         self.__unverified_clients = self.client_db.get_unverified_client()
+        self.__project_count = 0
+
         self.__paginate_by = 5
 
         self.__ip_pattern = r'(?=(\b|\D))(((\d{1,2})|(1\d{1,2})'
@@ -67,8 +74,8 @@ class WebsocketServer(object):
 
     def routes(self):
         return [
-            web.get('/api/server/auth/{uuid}', self.auth_api, name='verify'),
-            web.get('/api/server/deauth/{uuid}', self.deauth_api, name='unverified'),
+            web.get('/api/server/auth/{id}', self.auth_api, name='verify'),
+            web.get('/api/server/deauth/{id}', self.deauth_api, name='unverified'),
 
             web.get('/api/server/connect/{uuid}/{token}/{session_id}', self.connect_to_websocket, name='connect'),
             web.get('/api/server/get_connection_info/{host}/{hostname}',
@@ -81,8 +88,13 @@ class WebsocketServer(object):
             web.get('/api/server/remove_remote_from_blacklist/{remote}', self.remove_remote_from_blacklist,
                     name='remove'),
 
-            web.get('/api/server/remove_client/{uuid}', self.remove_client_api, name='remove_client'),
-            web.get('/common/header', self.get_header, name='header')
+            web.get('/api/server/remove_client/{id}', self.remove_client_api, name='remove_client'),
+
+            web.get('/api/server/get_project', self.get_project, name='get_project'),
+            web.post('/api/server/upload', self.upload, name='upload'),
+
+            web.get('/api/server/get_info', self.get_info, name='get_info'),
+            web.get('/api/server/get_header', self.get_header, name='get_header'),
 
         ]
 
@@ -124,17 +136,17 @@ class WebsocketServer(object):
 
     @login_required
     async def auth_api(self, request: web.Request):
-        uuid = request.match_info.get('uuid', None)
-        token = self.client_db.auth(uuid)
+        client_id = request.match_info.get('id', None)
+        token = self.client_db.auth(client_id)
         if token:
             return jsonp_response(request, {
                 'status': 0,
-                'msg': '"{uuid} is verified"'.format(uuid=uuid)
+                'msg': '"id: {client_id} is verified"'.format(client_id=client_id)
             })
         else:
             return jsonp_response(request, {
                 'status': 101,
-                'msg': 'uuid: {uuid} is not found'.format(uuid=uuid)
+                'msg': 'id: {client_id} is not found'.format(client_id=client_id)
             })
 
     @login_required
@@ -154,9 +166,9 @@ class WebsocketServer(object):
 
     @login_required
     async def remove_client_api(self, request: web.Request):
-        uuid = request.match_info.get('uuid', None)
-        if uuid:
-            result = self.client_db.remove_client(uuid)
+        client_id = request.match_info.get('id', None)
+        if client_id:
+            result = self.client_db.remove_client(client_id)
             if result:
                 return jsonp_response(request, {
                     'status': 101,
@@ -165,12 +177,12 @@ class WebsocketServer(object):
             else:
                 return jsonp_response(request, {
                     'status': 0,
-                    'msg': 'Delete the uuid: {uuid} successfully'.format(uuid=uuid)
+                    'msg': 'Delete the id: {client_id} successfully'.format(client_id=client_id)
                 })
         else:
             return jsonp_response(request, {
                 'status': 404,
-                'msg': 'uuid is none'
+                'msg': 'id is none'
             })
 
     @login_required
@@ -214,6 +226,63 @@ class WebsocketServer(object):
         return jsonp_response(request, {
             'total': total,
             'rows': rows
+        })
+
+    @login_required
+    async def get_project(self, request: web.Request):
+        projects = scan(project_dir=self.__project_dir)
+        self.__project_count = len(projects)
+
+        return jsonp_response(request, {
+            'total': len(projects),
+            'rows': projects
+        })
+
+    @login_required
+    async def upload(self, request: web.Request):
+        reader = await request.multipart()
+
+        field = await reader.next()
+        if field.name not in ['zip', 'tar']:
+            return jsonp_response(request, {'success': 0, 'error': 'Invalid file type'})
+
+        filename = field.filename
+        filename = self.__project_dir/filename
+        while filename.is_file():
+            filename = self.__project_dir/(gen_token() + field.filename)
+
+        with filename.open('wb') as fb:
+            while True:
+                chunk = await field.read_chunk()
+                if not chunk:
+                    break
+                fb.write(chunk)
+
+        return jsonp_response(request, {'success': 1})
+
+    @login_required
+    async def get_info(self, request: web.Request):
+        return jsonp_response(request, {
+            'status': 0,
+            'connection_count': self.__unverified_clients.count(),
+            'crawler_count': self.__verified_clients.count(),
+            'project_count': self.__project_count,
+            'task_count': 0
+        })
+
+    @login_required
+    async def get_header(self, request: web.Request):
+        session = await get_session(request)
+        header = aiohttp_jinja2.render_template('header.html', request, {
+            'username': session['username'],
+            'connection_count': self.__unverified_clients.count(),
+            'crawler_count': self.__verified_clients.count(),
+            'project_count': self.__project_count,
+            'task_count': 0
+        }).body.decode()
+        return jsonp_response(request, {
+            'status': 0,
+            'header': header
         })
 
     @login_required
@@ -294,21 +363,6 @@ class WebsocketServer(object):
                     await self.__job_scheduler.spawn(self.__handle_monitor(data))
             except Exception:
                 pass
-
-    @login_required
-    async def get_header(self, request: web.Request):
-        session = await get_session(request)
-        header = aiohttp_jinja2.render_template('header.html', request, {
-            'username': session['username'],
-            'connection_count': self.__unverified_clients.count(),
-            'crawler_count': self.__verified_clients.count(),
-            'spider_count': 0,
-            'task_count': 0
-        }).body.decode()
-        return jsonp_response(request, {
-            'status': 0,
-            'header': header
-        })
 
     async def __handle_client_collector(self, data: dict):
         if data['uuid'] not in self.__tasks or data['session_id'] not in self.__tasks[data['uuid']]:

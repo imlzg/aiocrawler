@@ -3,6 +3,7 @@ import asyncio
 import aiojobs
 from pathlib import Path
 from base64 import urlsafe_b64decode
+from typing import Union
 from aiocrawler.distributed.server.admin import Admin
 from aiocrawler.distributed.server.server import WebsocketServer
 from aiocrawler.distributed.server.utils import login_required
@@ -29,12 +30,13 @@ async def status404(request, handler):
 
 
 class Dashboard(object):
-    def __init__(self):
+    def __init__(self, project_dir: Union[str, Path] = None):
         self.__job_scheduler: aiojobs.Scheduler = aiojobs.Scheduler(close_timeout=0.1,
                                                                     limit=None,
                                                                     pending_limit=10000,
                                                                     exception_handler=None,
                                                                     loop=asyncio.get_event_loop())
+        self._project_dir = Path(project_dir) if project_dir else Path()
 
     @login_required
     async def index(self, request: web.Request):
@@ -45,8 +47,16 @@ class Dashboard(object):
         return aiohttp_jinja2.render_template('connection.html', request, {})
 
     @login_required
-    async def crawlers(self, request: web.Request):
-        return aiohttp_jinja2.render_template('crawlers.html', request, {})
+    async def crawler(self, request: web.Request):
+        return aiohttp_jinja2.render_template('crawler.html', request, {})
+
+    @login_required
+    async def project(self, request: web.Request):
+        return aiohttp_jinja2.render_template('project.html', request, {})
+
+    @login_required
+    async def get_header(self, request: web.Request):
+        return aiohttp_jinja2.render_template('header.html', request, {})
 
     def create_app(self) -> web.Application:
         """
@@ -65,14 +75,16 @@ class Dashboard(object):
         app.on_startup.append(admin.on_startup)
         app.on_cleanup.append(admin.on_cleanup)
 
-        server = WebsocketServer(job_scheduler=self.__job_scheduler, admin=admin)
+        server = WebsocketServer(job_scheduler=self.__job_scheduler, admin=admin, project_dir=self._project_dir)
         app.add_routes(server.routes())
         app.on_cleanup.append(server.close_ws_client)
 
         app.add_routes([
             web.get('/index', self.index, name='index'),
             web.get('/connection', self.connection, name='connection'),
-            web.get('/crawler', self.crawlers, name='crawlers'),
+            web.get('/crawler', self.crawler, name='crawler'),
+            web.get('/project', self.project, name='project'),
+
             web.get('/', self.index),
             web.static('/css', 'templates/css'),
             web.static('/fonts', 'templates/fonts'),
@@ -92,5 +104,5 @@ if __name__ == '__main__':
     current_dir = str(Path().absolute())
     if current_dir not in sys.path:
         sys.path.append(current_dir)
-    d = Dashboard()
+    d = Dashboard(project_dir='demo')
     d.run()

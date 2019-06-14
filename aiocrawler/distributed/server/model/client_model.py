@@ -58,8 +58,9 @@ class ClientDatabase(object):
         return client
 
     @staticmethod
-    def auth(uuid: str):
-        client = ClientModel.get_or_none(ClientModel.uuid == uuid)
+    def auth(client_id: str):
+        client_id = int(client_id)
+        client = ClientModel.get_or_none(ClientModel.client_id == client_id)
         if not client:
             return None
 
@@ -70,7 +71,7 @@ class ClientDatabase(object):
         ClientModel.update({
             ClientModel.token: token,
             ClientModel.authorized_at: datetime.now().strftime(DATETIME_FORMAT)
-        }).where(ClientModel.uuid == uuid).execute()
+        }).where(ClientModel.client_id == client_id).execute()
         return token
 
     @staticmethod
@@ -106,8 +107,8 @@ class ClientDatabase(object):
         return data
 
     @staticmethod
-    def remove_client(uuid):
+    def remove_client(client_id: str):
         try:
-            ClientModel.delete().where(ClientModel.uuid == uuid).execute()
+            ClientModel.delete().where(ClientModel.client_id == int(client_id)).execute()
         except Exception as e:
             return e
