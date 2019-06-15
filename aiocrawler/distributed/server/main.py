@@ -55,6 +55,10 @@ class Dashboard(object):
         return aiohttp_jinja2.render_template('project.html', request, {})
 
     @login_required
+    async def task(self, request: web.Request):
+        return aiohttp_jinja2.render_template('task.html', request, {})
+
+    @login_required
     async def get_header(self, request: web.Request):
         return aiohttp_jinja2.render_template('header.html', request, {})
 
@@ -84,6 +88,7 @@ class Dashboard(object):
             web.get('/connection', self.connection, name='connection'),
             web.get('/crawler', self.crawler, name='crawler'),
             web.get('/project', self.project, name='project'),
+            web.get('/task', self.task, name='task'),
 
             web.get('/', self.index),
             web.static('/css', 'templates/css'),

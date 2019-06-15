@@ -5,7 +5,7 @@ from hashlib import sha1
 from datetime import datetime
 from typing import Union
 from aiohttp_session import get_session
-from aiohttp.web import Request, Response, json_response, HTTPFound
+from aiohttp.web import Request, Response, HTTPFound
 from aiocrawler.distributed.common import DATETIME_FORMAT
 
 PERMISSIONS = ['Admin', 'superuser', 'user']
@@ -22,10 +22,14 @@ def jsonp(data: dict, callback: str) -> str:
     return text
 
 
-def jsonp_response(request: Request, data: dict):
+def jsonp_response(request: Request, data: dict, status: int = 200):
     if 'callback' in request.query:
-        return Response(text=jsonp(data, request.query.get('callback', 'callback')))
-    return json_response(data)
+        return Response(text='{callback}({data})'.format(
+            callback=request.query['callback'],
+            data=dumps(data)),
+            status=status)
+
+    return Response(text=dumps(data), status=status)
 
 
 def login_required(fn):

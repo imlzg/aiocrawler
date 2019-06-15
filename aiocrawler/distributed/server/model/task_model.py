@@ -11,7 +11,7 @@ from aiocrawler.distributed.server.model.db import db
 
 class RequestMethodModel(Model):
     session_id = CharField(max_length=40, primary_key=True, unique=True)
-    method = CharField(max_length=8, default='GET')
+    method = CharField(max_length=16, default='GET')
     method_count = IntegerField(default=0)
 
     class Meta:
@@ -81,53 +81,67 @@ class TaskDatabase(object):
     @staticmethod
     def replace(uuid: str, session_id: str, data: dict):
         if 'request_method_count' in data:
-            method, count = data.pop('request_method_count').items()
-            RequestMethodModel.replace({RequestMethodModel.session_id: session_id,
-                                        RequestMethodModel.method: method,
-                                        RequestMethodModel.count: count}).execute()
+            rows = [{
+                RequestMethodModel.session_id: session_id,
+                RequestMethodModel.method: method,
+                RequestMethodModel.method_count: count
+            } for method, count in data.pop('request_method_count')]
+            RequestMethodModel.replace_many(rows).execute()
 
         if 'response_status_count' in data:
-            status, count = data.pop('response_status_count').items()
-            ResponseStatusModel.replace({ResponseStatusModel.session_id: session_id,
-                                         ResponseStatusModel.status: status,
-                                         ResponseStatusModel.count: count}).execute()
+            rows = [{
+                ResponseStatusModel.session_id: session_id,
+                ResponseStatusModel.status: status,
+                ResponseStatusModel.status_count: count
+            } for status, count in data.pop('response_status_count').items()]
+            ResponseStatusModel.replace_many(rows).execute()
 
         if 'item_count' in data:
-            item_name, count = data.pop('item_count').items()
-            ItemCountModel.replace({ItemCountModel.session_id: session_id,
-                                    ItemCountModel.item_name: item_name,
-                                    ItemCountModel.count: count}).execute()
-        data['session_id'] = session_id
-        data['uuid'] = uuid
+            rows = [{
+                ItemCountModel.session_id: session_id,
+                ItemCountModel.item_name: item_name,
+                ItemCountModel.item_count: count
+            } for item_name, count in data.pop('item_count').items()]
+            ItemCountModel.replace_many(rows).execute()
+
+        data[TaskModel.session_id] = session_id
+        data[TaskModel.uuid] = uuid
         TaskModel.replace(data).execute()
 
     @staticmethod
-    def get_client_task(uuid: str):
-        data = TaskModel.select(TaskModel, RequestMethodModel, ResponseStatusModel).join(
-            RequestMethodModel, JOIN.LEFT_OUTER, on=(TaskModel.session_id == RequestMethodModel.session_id),
-        ).join(
-            ResponseStatusModel, on=(TaskModel.session_id == ResponseStatusModel.session_id)
-        ).join(
-            ItemCountModel, on=(TaskModel.session_id == ItemCountModel.session_id)
-        ).where(TaskModel.uuid == uuid).execute()
-        return data
-
-    @staticmethod
-    def get_task_count():
-        count = TaskModel.select().count()
-        return count
+    def get_task(uuid: str):
+        tasks = TaskModel.select().join(
+            RequestMethodModel,
+            JOIN.LEFT_OUTER, on=(TaskModel.session_id == RequestMethodModel.session_id)).alias('request_method').join(
+            ResponseStatusModel,
+            JOIN.LEFT_OUTER, on=(TaskModel.session_id == ResponseStatusModel.session_id)).alias('response_status').join(
+            ItemCountModel,
+            JOIN.LEFT_OUTER, on=(TaskModel.session_id == ItemCountModel.session_id)).alias('item_count').where(
+            TaskModel.uuid == uuid
+        )
+        if tasks.count() >= 1:
+            return tasks[0]
+        return None
 
     @staticmethod
     def get_all_task():
-        tasks = TaskModel.select()
+        tasks = TaskModel.select().join(
+            RequestMethodModel,
+            JOIN.LEFT_OUTER, on=(TaskModel.session_id == RequestMethodModel.session_id)).alias('request_method').join(
+            ResponseStatusModel,
+            JOIN.LEFT_OUTER, on=(TaskModel.session_id == ResponseStatusModel.session_id)).alias('response_status').join(
+            ItemCountModel, JOIN.LEFT_OUTER, on=(TaskModel.session_id == ItemCountModel.session_id)).alias('item_count')
         return tasks
 
     @staticmethod
-    def get_active_task_count():
-        count = TaskModel.select().where(TaskModel.running is True).count()
-        return count
-
-    @staticmethod
     def get_active_task():
-        tasks = TaskModel.select().where(TaskModel.running is True)
+        tasks = TaskModel.select().join(
+            RequestMethodModel,
+            JOIN.LEFT_OUTER, on=(TaskModel.session_id == RequestMethodModel.session_id)).alias('request_method').join(
+            ResponseStatusModel,
+            JOIN.LEFT_OUTER, on=(TaskModel.session_id == ResponseStatusModel.session_id)).alias('response_status').join(
+            ItemCountModel,
+            JOIN.LEFT_OUTER, on=(TaskModel.session_id == ItemCountModel.session_id)).alias('item_count').where(
+            TaskModel.running is True
+        )
         return tasks

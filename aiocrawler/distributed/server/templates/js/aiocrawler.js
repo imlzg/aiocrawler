@@ -23,17 +23,8 @@ function getHeader(){
         success: (data) => {
             if (data['status'] === 0) {
                 $('#header').html(data['header']);
-                let pathname = window.location.pathname;
-                if (pathname === '/index' || pathname === '/')
-                    $('#dashboard-li').addClass('nav-item active');
-                else if (pathname === '/connection')
-                    $('#connection-li').addClass('nav-item active');
-                else if (pathname === '/crawler')
-                    $('#crawler-li').addClass('nav-item active');
-                else if (pathname === '/project')
-                    $('#spider-li').addClass('nav-item active');
-                else if (pathname === '/task')
-                    $('#task-li').addClass('nav-item active');
+                let pathname = window.location.pathname.split('/')[1];
+                $('#' + pathname + '-li').addClass('active');
             }
             else
                 notify({msg: data['msg']});
@@ -61,6 +52,40 @@ function updateHeaderInfo() {
             }
         }
     });
+}
+
+function createTable(setting){
+    let defaultSetting ={
+        sidePagination: 'server',
+        search: false
+    };
+    $.extend(defaultSetting, setting);
+
+    defaultSetting.table.bootstrapTable({
+		url: defaultSetting.url,
+		dataType: 'jsonp',
+		stripped: true,
+		classes: 'table-borderless',
+		cache: false,
+		pagination: true,
+		sidePagination: defaultSetting.sidePagination,
+		pageNumber: 1,
+		pageSize: 5,
+		pageList: [10, 25, 50, 100],
+		search: defaultSetting.search,
+		clickToSelect: true,
+		queryParamsType: '',
+		queryParams: (params) => {
+			return {
+				pageNumber: params.pageNumber,
+				pageSize: params.pageSize
+			};
+		},
+		columns: defaultSetting.columns,
+		onLoadError: () => {
+			notify({msg: 'Cannot load data from remote', type: 'danger'});
+		}
+	});
 }
 
 function websocket(){

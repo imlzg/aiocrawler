@@ -1,50 +1,11 @@
 let crawlerTable = $('#crawler-table');
 
-function remove(params){
-    $.ajax({
-        url: '/api/server/remove_client/' + params['uuid'],
-        method: 'GET',
-        dataType: 'jsonp',
-        success: (data) => {
-            if (data['status'] === 0)
-            {
-                updateHeaderInfo();
-                notify({msg: data['msg'], type: 'success'});
-                crawlerTable.bootstrapTable('remove', {field: 'id', values: params['id']});
-            }
-            else
-                notify({msg: data['msg'], type: 'danger'});
-        }
-    });
-}
-
-function createCrawlerTable(){
+function createCrawlerTable() {
     let statusString = ['disconnect', 'connected', 'error'];
     let buttonClass = ['btn btn-secondary', 'btn btn-success', 'btn btn-danger'];
-
-    crawlerTable.bootstrapTable({
-        url: '/api/server/get_verified',
-        method: 'GET',
-        dataType: 'jsonp',
-        classes: 'table-borderless',
-        clickToSelect: true,
-        stripped: true,
-        cache: false,
-        pagination: true,
-        sidePagination: 'server',
-        queryParamsType: '',
-        pageNumber: 1,
-        pageSize: 5,
-        pageList: [10, 25, 50, 100],
-        search: false,
-        showRefresh: true,
-        showColumns: true,
-        queryParams: (params) => {
-            return {
-                pageNumber: params.pageNumber,
-                pageSize: params.pageSize
-            };
-        },
+    createTable({
+        table: crawlerTable,
+        url: '/api/server/crawler/list',
         columns: [
             {
                 field: 'id',
@@ -83,7 +44,7 @@ function createCrawlerTable(){
                 title: 'Authorized at',
                 align: 'center',
                 formatter: (value, row) => {
-                    return row.authorized_at;
+                    return row['authorized_at'];
                 }
             },
             {

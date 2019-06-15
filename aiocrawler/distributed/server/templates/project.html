@@ -7,6 +7,7 @@
 	<link rel="stylesheet" href="css/bootstrap.min.css">
 	<link rel="stylesheet" href="css/font-awesome.min.css">
 	<link rel="stylesheet" href="css/ready.min.css">
+	<link rel="stylesheet" href="css/jquery.dm-uploader.min.css">
 </head>
 <body>
 	<div class="wrapper">
@@ -14,18 +15,17 @@
 		<div class="main-panel">
 			<div class="content">
 				<div class="container-fluid">
-					<h4 class="page-title">Spider</h4>
 					<div class="col-md-12">
 						<div class="card card-tasks">
+							<div class="card-header ">
+								<h4 class="card-title">Project</h4>
+							</div>
 							<div class="card-body">
 								<div class="table-full-width">
-									<input id="file" type="file" name="file"/>
+									<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#upload-modal">Upload Projects</button>
 									<table class="table" id="project-table">
 									</table>
 								</div>
-							</div>
-							<div class="card-footer">
-								<ul class="pagination" id="pagination"></ul>
 							</div>
 						</div>
 					</div>
@@ -33,12 +33,74 @@
 				</div>
 			</div>
 		</div>
+	<div class="modal fade" id="upload-modal" tabindex="-1" role="dialog" aria-labelledby="modal-title" aria-hidden="true">
+		<div class="modal-dialog modal-lg" role="document">
+			<div class="modal-content">
+
+				<div class="modal-header">
+				<h5 class="modal-title" id="modal-title">Upload Projects</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+				  <span aria-hidden="true">&times;</span>
+				</button>
+				</div>
+				<div class="modal-body">
+					<main role="main" class="container">
+                      <div class="row">
+                        <div class="col-md-6 col-sm-12">
+
+                          <!-- Our markup, the important part here! -->
+                          <div id="drag-and-drop-zone" class="dm-uploader p-5">
+                            <h3 class="mb-5 mt-5 text-muted">Drag &amp; drop files here</h3>
+
+                            <div class="btn btn-primary btn-block mb-5">
+                                <span>Open the file Browser</span>
+                                <input type="file" title='Click to add projects' />
+                            </div>
+                          </div><!-- /uploader -->
+
+                        </div>
+                        <div class="col-md-6 col-sm-12">
+                          <div class="card h-100">
+                            <div class="card-header">
+                              File List
+                            </div>
+
+                            <ul class="list-unstyled p-2 d-flex flex-column col" id="files">
+                              <li class="text-muted text-center empty">No files uploaded.</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div><!-- /file list -->
+
+					<!-- File item template -->
+					<script type="text/html" id="files-template">
+					  <li class="media">
+						<div class="media-body mb-1">
+						  <p class="mb-2">
+							<strong>%%filename%%</strong> - Message: <span class="text-muted">Waiting</span>
+						  </p>
+						  <div class="progress mb-2">
+							<div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+							  role="progressbar"
+							  style="width: 0%"
+							  aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+							</div>
+						  </div>
+						  <hr class="mt-1 mb-1" />
+						</div>
+					  </li>
+					</script>
+                    </main>
+				</div>
+			</div>
+		</div>
+	</div>
 </body>
 <script src="js/jquery.js"></script>
 <script src="js/bootstrap.min.js"></script>
 <script src="js/bootstrap-notify.min.js"></script>
 <script src="js/bootstrap-table.min.js"></script>
 <script src="js/aiocrawler.js"></script>
-<script src="js/pekeUpload.min.js"></script>
+<script src="js/jquery.dm-uploader.min.js"></script>
 <script src="js/project.js"></script>
 </html>
