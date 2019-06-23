@@ -5,11 +5,12 @@ import aiojobs
 import shutil
 import aiohttp_jinja2
 from aiohttp import web
-from ujson import loads
+from ujson import loads, dumps
 from typing import Dict, Union, Set
 from time import time
 from pathlib import Path
 from datetime import datetime
+from aiocrawler import logger
 from aiohttp_session import get_session
 from aiocrawler.distributed.server.admin import Admin
 from aiocrawler.distributed.common import scan
@@ -23,46 +24,27 @@ class WebsocketServer(object):
     def __init__(self, job_scheduler: aiojobs.Scheduler,
                  admin: Admin,
                  project_dir: Union[str, Path],
-                 support_upload_types: Set[str] = None):
+                 support_upload_types: Set[str] = None,
+                 archive_type: str = 'tar'):
 
         self.__admin = admin
         self.__job_scheduler = job_scheduler
         self.__project_dir = Path(project_dir)
 
-        self.__support_upload_types = support_upload_types if support_upload_types else ('.zip', '.tar')
+        self.__support_upload_types = support_upload_types \
+            if support_upload_types else ('.zip', '.tar', '.tar.gz', '.tar.xz', '.tar.bz')
 
         self.client_db = ClientDatabase()
+        self.client_db.init_status()
+
         self.task_db = TaskDatabase()
 
         self.__tasks = self.task_db.get_all_task()
+        self.__tasks_tmp = []
 
         # ws_client: {uuid: {session_id: websocket}}
         self.ws_client = {}
 
-        '''spiders:
-        {uuid:
-            {package: {
-                'spider_count': count,
-                'spiders': {
-                    spider_name: spider_classname
-                },
-                'files': {
-                    filename: hash
-                },
-                'created_at': time,
-                'updated_at': time
-            }}
-        }'''
-        self.__spiders: Dict[str, Dict[str, Dict]] = {}
-
-        '''tasks:
-            {uuid: {
-                task_id: {
-                    'items': items,
-                    'changed': False
-                }
-            }}
-        '''
         self.__blacklist: Dict[str, int] = {}
         self.__ban_time = 60 * 30
 
@@ -71,10 +53,15 @@ class WebsocketServer(object):
 
         self.__verified_clients = self.client_db.get_verified_client()
         self.__unverified_clients = self.client_db.get_unverified_client()
+        self.__active_clients = self.client_db.get_active_client()
 
-        self.__projects, self.__project_hashes = scan(self.__project_dir)
+        self.__projects = scan(self.__project_dir)
+
+        self.__client_projects: Dict[str, Dict] = {}
 
         self.__paginate_by = 5
+        self.__archive_type = archive_type
+        self.__downloads: Dict[str, str] = {}
 
         self.__ip_pattern = r'(?=(\b|\D))(((\d{1,2})|(1\d{1,2})'
         self.__ip_pattern += r'|(2[0-4]\d)|(25[0-5]))\.){3}((\d{1,2})|(1\d{1,2})|(2[0-4]\d)|(25[0-5]))(?=(\b|\D))'
@@ -82,25 +69,30 @@ class WebsocketServer(object):
     def routes(self):
         return [
 
-            web.get('/api/server/connect/{uuid}/{token}/{session_id}', self.connect_to_websocket, name='connect'),
-            web.get('/api/server/get_connection_info/{host}/{hostname}',
+            web.get('/api/server/connect/uuid/{uuid}/token/{token}',
+                    self.websocket, name='connect'),
+            web.get('/api/server/get_connection_info/host/{host}/hostname/{hostname}',
                     self.get_websocket_token, name='get_websocket_token'),
 
-            web.get('/api/server/crawler/list', self.get_verified_client_api, name='get_verified'),
-            web.get('/api/server/crawler/deauth', self.deauth_api, name='deauth'),
+            web.get('/api/server/crawler/verified_list', self.get_verified_client_api, name='get_verified'),
+            web.get('/api/server/crawler/active_list', self.get_active_client, name='get_active_client'),
+            web.get('/api/server/crawler/deauth/{id}', self.deauth_api, name='deauth'),
+            web.get('/api/sever/crawler/get_project/{uuid}', self.get_client_project, name='get_client_project'),
 
             web.get('/api/server/connection/list', self.get_unverified_client_api, name='get_unverified'),
-            web.get('/api/server/connection/auth', self.auth_api, name='auth'),
-            web.get('/api/server/connection/remove/{id}', self.remove_client_api, name='connection_remove'),
+            web.get(r'/api/server/connection/auth/{id:\d+}', self.auth_api, name='auth'),
+            web.get(r'/api/server/connection/remove/{uuid}', self.remove_client_api, name='connection_remove'),
 
             web.get('/api/server/blacklist/put/{remote}', self.put_into_blacklist, name='put_into_blacklist'),
             web.get('/api/server/blacklist/remove/{remote}', self.remove_remote_from_blacklist,
                     name='remove_from_blacklist'),
 
-
             web.post('/api/server/project/upload', self.upload, name='upload'),
             web.get('/api/server/project/list', self.get_project, name='project_list'),
             web.get('/api/server/project/remove', self.remove_project, name='remove_project'),
+            web.get('/api/server/project/deploy/name/{project_name}/uuid/{uuid}', self.deploy, name='deploy'),
+            web.get('/api/server/project/download/{token}', self.download, name='download'),
+            web.get('/server/project/edit', self.edit, name='edit'),
 
             web.get('/api/server/task/list', self.get_task, name='task_list'),
 
@@ -115,23 +107,33 @@ class WebsocketServer(object):
                 return True
             self.__blacklist.pop(remote)
 
-    async def connect_to_websocket(self, request: web.Request):
+    async def websocket(self, request: web.Request):
         if self.is_ban(request.remote):
             return web.HTTPNotFound()
 
-        uuid = request.match_info.get('uuid', None)
-        token = request.match_info.get('token', None)
-        session_id = request.match_info.get('session_id', None)
-        if self.client_db.verify(uuid, token) and session_id:
+        uuid = request.match_info['uuid']
+        token = request.match_info['token']
+        if self.client_db.verify(uuid, token):
             websocket = web.WebSocketResponse()
             check = websocket.can_prepare(request)
             if check:
                 await websocket.prepare(request)
+
                 if uuid not in self.ws_client:
-                    self.ws_client[uuid] = {}
-                self.ws_client[uuid][session_id] = websocket
+                    session_id = 'main'
+                    self.ws_client[uuid] = {session_id: websocket}
+                else:
+                    session_id = gen_token()
+                    self.ws_client[uuid][session_id] = websocket
+
                 self.client_db.set_status(uuid=uuid, status=1)
-                await self.receive(websocket)
+                self.__admin.messages.append({
+                    'msg': 'a client connected to the server'.format(uuid=uuid),
+                    'type': 'success',
+                    'url': str(request.app.router['crawler'].url_for())
+                })
+
+                await self.receive(websocket, uuid=uuid)
                 self.ws_client[uuid].pop(session_id, None)
                 self.client_db.set_status(uuid=uuid, status=0)
                 return websocket
@@ -145,11 +147,10 @@ class WebsocketServer(object):
             for ws in ws_list.values():
                 if not ws.closed:
                     await ws.close()
-                    self.client_db.set_status(uuid=uuid, status=0)
 
     @login_required
     async def auth_api(self, request: web.Request):
-        client_id = request.match_info.get('id', None)
+        client_id = request.match_info['id']
         token = self.client_db.auth(client_id)
         if token:
             return jsonp_response(request, {
@@ -164,7 +165,7 @@ class WebsocketServer(object):
 
     @login_required
     async def deauth_api(self, request: web.Request):
-        uuid = request.match_info.get('uuid', None)
+        uuid = request.match_info['uuid']
         check = self.client_db.clear_token(uuid)
         if check:
             return jsonp_response(request, {
@@ -174,29 +175,29 @@ class WebsocketServer(object):
         else:
             return jsonp_response(request, {
                 'status': 101,
-                'msg': 'uuid: {uuid} is not found'.format(uuid=uuid)
+                'msg': 'uuid: {uuid} not found'.format(uuid=uuid)
             })
 
     @login_required
     async def remove_client_api(self, request: web.Request):
-        client_id = request.match_info.get('id', None)
-        if client_id:
-            result = self.client_db.remove_client(client_id)
-            if result:
-                return jsonp_response(request, {
-                    'status': 101,
-                    'msg': result
-                })
-            else:
-                return jsonp_response(request, {
-                    'status': 0,
-                    'msg': 'Delete the id: {client_id} successfully'.format(client_id=client_id)
-                })
-        else:
+        uuid = request.match_info['uuid']
+        exception = self.client_db.remove_client(uuid)
+        if exception:
             return jsonp_response(request, {
-                'status': 404,
-                'msg': 'id is none'
+                'status': 400,
+                'msg': exception
             })
+        else:
+            await self._disconnect_websocket(uuid)
+            return jsonp_response(request, {
+                'status': 0,
+                'msg': 'Delete the uuid "{uuid}..." successfully'.format(uuid=uuid[:5])
+            })
+
+    async def _disconnect_websocket(self, uuid: str):
+        if uuid in self.ws_client:
+            for websocket in self.ws_client.pop(uuid).values():
+                await websocket.close()
 
     @login_required
     async def get_unverified_client_api(self, request: web.Request):
@@ -242,6 +243,76 @@ class WebsocketServer(object):
         })
 
     @login_required
+    async def get_active_client(self, request: web.Request):
+        page_number = int(request.query.get('pageNumber', '1'))
+        page_size = int(request.query.get('pageSize', '5'))
+
+        total = self.__active_clients.count()
+        rows = [{
+            'id': one.client_id,
+            'uuid': one.uuid,
+            'remote': one.remote_ip,
+            'host': one.host,
+            'hostname': one.hostname,
+            'status': one.status,
+            'authorized_at': one.authorized_at.strftime(DATETIME_FORMAT)
+
+        } for one in self.__active_clients.paginate(page_number, page_size)]
+
+        return jsonp_response(request, {
+            'total': total,
+            'rows': rows
+        })
+
+    @login_required
+    async def deploy(self, request: web.Request):
+        project_name = request.match_info['project_name']
+        uuid = request.match_info['uuid']
+        filepath = self.__project_dir/project_name
+        if project_name not in self.__projects or not filepath.is_dir():
+            return jsonp_response(request, {
+                'status': 400,
+                'msg': 'project "{project_name}" is not found'.format(project_name=project_name)
+            })
+        elif uuid not in self.ws_client:
+            return jsonp_response(request, {
+                'status': 400,
+                'msg': 'the crawler is disconnected'
+            })
+
+        archive = self.__projects[project_name].get('archive', None)
+        if archive is None \
+                or archive.split('_', 2)[0] != self.__projects[project_name]['hash'] \
+                or not Path(archive).is_file():
+
+            archive = shutil.make_archive(
+                base_name='{project_dir}/{hash}_{project_name}'.format(
+                    project_dir=str(self.__project_dir),
+                    hash=self.__projects[project_name]['hash'], project_name=project_name),
+                format=self.__archive_type,
+                root_dir=str(filepath.absolute())
+            )
+            self.__projects[project_name]['archive'] = archive
+
+        token = gen_token()
+        while token in self.__downloads:
+            token = gen_token()
+        self.__downloads[token] = archive
+
+        await self.send_command(uuid, 1, {'token': token, 'filename': Path(archive).name})
+        return jsonp_response(request, {
+            'status': 0,
+        })
+
+    async def download(self, request: web.Request):
+        token = request.match_info['token']
+        archive = self.__downloads.pop(token, None)
+        if archive is None or not Path(archive).is_file():
+            return web.HTTPNotFound()
+
+        return web.FileResponse(path=archive)
+
+    @login_required
     async def get_project(self, request: web.Request):
         return jsonp_response(request, {
             'total': len(self.__projects),
@@ -250,18 +321,14 @@ class WebsocketServer(object):
 
     @login_required
     async def remove_project(self, request: web.Request):
-        project_name = request.match_info.get('project_name', None)
-        if project_name is None:
-            return jsonp_response(request, {'status': 400, 'msg': 'project name is empty'}, status=400)
-
+        project_name = request.match_info['project_name']
         project = self.__projects.pop(project_name, None)
         if project:
-            self.__project_hashes.pop(project['hash'], None)
             return jsonp_response(request, {'status': 0, 'msg': 'Remove {name} successfully'.format(name=project_name)})
         else:
             return jsonp_response(request,
                                   {'status': 400,
-                                   'msg': 'project "{name}" is not found'.format(name=project_name)
+                                   'msg': 'project "{name}" not found'.format(name=project_name)
                                    }, status=400)
 
     @login_required
@@ -281,12 +348,19 @@ class WebsocketServer(object):
                     break
                 fb.write(chunk)
 
-        if self.add_project(filename):
+        status = self.add_project(filename)
+        if status == 0:
             return jsonp_response(request,
                                   {'status': 'error',
-                                   'message': 'The file {filename} already exists'.format(filename=filename.name)
+                                   'message': 'The compressed file does not have a spider'
                                    }, status=400)
-        return jsonp_response(request, {'status': 'ok'})
+        elif status == 1:
+            return jsonp_response(request,
+                                  {'status': 'error',
+                                   'message': 'The file already exists'
+                                   }, status=400)
+        else:
+            return jsonp_response(request, {'status': 'ok'})
 
     def add_project(self, filename: Path):
         tmp_dir = self.__project_dir/gen_token()
@@ -296,11 +370,13 @@ class WebsocketServer(object):
         shutil.unpack_archive(str(filename), extract_dir=str(tmp_dir))
         filename.unlink()
 
-        exists = True
+        status = 0
         idx = 1
-        projects, _ = scan(tmp_dir)
+        projects = scan(tmp_dir)
+        hash_set = set(project['hash'] for project in self.__projects.values())
         for project_name, project in projects.items():
-            if project['hash'] in self.__project_hashes:
+            if project['hash'] in hash_set:
+                status = 1
                 continue
 
             if project_name in self.__projects:
@@ -319,11 +395,24 @@ class WebsocketServer(object):
             Path(project['path']).rename(self.__project_dir/name)
             project['name'] = name
             self.__projects[name] = project
-            self.__project_hashes.add(project['hash'])
-            exists = False
+            status = 2
 
         shutil.rmtree(str(tmp_dir))
-        return exists
+        return status
+
+    @login_required
+    async def get_client_project(self, request: web.Request):
+        uuid = request.match_info['uuid']
+        if uuid not in self.__client_projects:
+            return jsonp_response(request, {
+                'status': 400,
+                'msg': 'uuid "{uuid}" not found'.format(uuid=uuid)
+            })
+        projects = list(self.__client_projects.values())
+        return jsonp_response(request, {
+            'total': len(projects),
+            'rows': projects
+        })
 
     @login_required
     async def get_task(self, request: web.Request):
@@ -334,7 +423,10 @@ class WebsocketServer(object):
         rows = [{
             'uuid': row.uuid,
             'session_id': row.session_id,
-            'spider_name': row.spider_name
+            'spider_name': row.spider_name,
+            'start_time': row.start_time,
+            'finish_time': row.finish_time,
+            'finish_reason': row.finish_reason
         } for row in self.__tasks.paginate(page_number, page_size)]
 
         return jsonp_response(request, {
@@ -368,8 +460,12 @@ class WebsocketServer(object):
         })
 
     @login_required
+    async def edit(self, request: web.Request):
+        return aiohttp_jinja2.render_template('edit.html', request, {})
+
+    @login_required
     async def put_into_blacklist(self, request: web.Request):
-        remote_host = request.match_info.get('remote')
+        remote_host = request.match_info['remote']
 
         if remote_host in self.__blacklist:
             return jsonp_response(request, {
@@ -387,7 +483,7 @@ class WebsocketServer(object):
 
     @login_required
     async def remove_remote_from_blacklist(self, request: web.Request):
-        remote_ip = request.match_info.get('remote')
+        remote_ip = request.match_info['remote']
         if remote_ip in self.__blacklist:
             self.__blacklist.pop(remote_ip)
             return jsonp_response(request, {
@@ -396,12 +492,11 @@ class WebsocketServer(object):
         else:
             return jsonp_response(request, {
                 'status': 100,
-                'msg': '{remote} is not found'.format(remote=remote_ip)
+                'msg': 'remote "{remote}" not found'.format(remote=remote_ip)
             })
 
     async def get_websocket_token(self, request: web.Request):
-        if self.is_ban(request.remote) or 'host' not in request.match_info \
-                or 'hostname' not in request.match_info or not re.match(self.__ip_pattern, request.match_info['host']):
+        if self.is_ban(request.remote) or not re.match(self.__ip_pattern, request.match_info['host']):
             return web.HTTPNotFound()
 
         uuid = gen_uuid(request.remote, request.match_info['host'], request.match_info['hostname'])
@@ -432,34 +527,42 @@ class WebsocketServer(object):
             'msg': 'Waiting for verification...'
         })
 
-    async def receive(self, websocket: web.WebSocketResponse):
+    async def receive(self, websocket: web.WebSocketResponse, uuid: str):
         async for msg in websocket:
             # noinspection PyBroadException
             try:
                 data = loads(msg.data)
-                if data['classname'] == 'ClientCollector':
-                    await self.__job_scheduler.spawn(self.__handle_client_collector(data))
-                elif data['classname'] == 'WebsocketClient':
+                logger.debug('from {uuid}: {data}'.format(uuid=uuid, data=data))
+
+                if data['classname'] == 'collector':
+                    # await self.__job_scheduler.spawn(self.__handle_client_collector(data))
                     pass
+                elif data['classname'] == 'client':
+                    await self.__job_scheduler.spawn(self.__handler_client(data, uuid))
                     # await self.__job_scheduler.spawn(self.__handle_websocket_client(data))
                 elif data['classname'] == 'Monitor':
                     await self.__job_scheduler.spawn(self.__handle_monitor(data))
             except Exception:
                 pass
 
-    async def __handle_client_collector(self, data: dict):
-        if data['uuid'] not in self.__tasks or data['session_id'] not in self.__tasks[data['uuid']]:
-            self.__tasks[data['uuid']] = {data['session_id']: {}}
-        for key, value in data['info'].items():
-            if key in self.__collector_keys:
-                self.__tasks[data['uuid']][data['session_id']][key] = value
+    async def __handler_client(self, data: dict, uuid: str):
+        if data['info']['command'] == 1:
+            pass
+        elif data['info']['command'] == 6:
+            self.__client_projects[uuid] = data['info']['projects']
+    #
+    # async def __handle_client_collector(self, data: dict, uuid: str):
+    #     if data['uuid'] not in self.__tasks or data['session_id'] not in self.__tasks[data['uuid']]:
+    #         self.__tasks[data['uuid']] = {data['session_id']: {}}
+    #     for key, value in data['info'].items():
+    #         if key in self.__collector_keys:
+    #             self.__tasks[data['uuid']][data['session_id']][key] = value
 
     async def insert(self):
         while True:
             for uuid, task in self.__tasks.items():
                 for session_id, items in task.items():
                     self.task_db.replace(uuid, session_id, items)
-
             self.__tasks = {}
             await asyncio.sleep(self.__interval)
 
@@ -473,3 +576,9 @@ class WebsocketServer(object):
     async def get_crawler_list(self):
         crawler_list = self.client_db.get_verified_client()
         return crawler_list
+
+    async def send_command(self, uuid: str, command: int, info: dict):
+        await self.ws_client[uuid]['main'].send_str(dumps({
+            'command': command,
+            'info': info
+        }))

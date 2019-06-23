@@ -93,6 +93,10 @@ class ClientDatabase(object):
         return False
 
     @staticmethod
+    def init_status():
+        ClientModel.update({ClientModel.status: 0}).execute()
+
+    @staticmethod
     def set_status(uuid: str, status: int = 0):
         ClientModel.update({ClientModel.status: status}).where(ClientModel.uuid == uuid).execute()
 
@@ -103,12 +107,17 @@ class ClientDatabase(object):
 
     @staticmethod
     def get_verified_client():
-        data = ClientModel.select().where(ClientModel.token.is_null(False))
+        data = ClientModel.select().where(ClientModel.token.is_null(False)).order_by(ClientModel.status.desc())
         return data
 
     @staticmethod
-    def remove_client(client_id: str):
+    def get_active_client():
+        data = ClientModel.select().where(ClientModel.status == 1)
+        return data
+
+    @staticmethod
+    def remove_client(uuid: str):
         try:
-            ClientModel.delete().where(ClientModel.client_id == int(client_id)).execute()
+            ClientModel.delete().where(ClientModel.uuid == uuid).execute()
         except Exception as e:
             return e

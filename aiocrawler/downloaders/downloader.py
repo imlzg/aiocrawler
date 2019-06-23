@@ -23,5 +23,5 @@ class BaseDownloader(object):
                 self.logger.error(e)
         elif request.handle_way == 'selector':
             response.selector = Selector(text=response.text)
-
+            response.selector = Selector()
         return response

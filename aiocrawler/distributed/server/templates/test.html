@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test</title>
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css">
+    <link rel="stylesheet" href="css/codemirror/codemirror.css">
+    <link rel="stylesheet" href="css/codemirror/theme/darcula.css">
+    <link rel="stylesheet" href="css/codemirror/addon/fold/foldgutter.css">
+    <link rel="stylesheet" href="css/codemirror/addon/lint/lint.css">
+    <link rel="stylesheet" href="css/codemirror/addon/hint/show-hint.css">
+</head>
+<body>
+<div class="row">
+    <div class="col-md-4 col-sm-12">
+        test
+    </div>
+    <div class="col-md-8 col-sm-12">
+        <label for="code">Python</label><textarea id="code" name="code"></textarea>
+    </div>
+</div>
+
+</body>
+<script src="js/jquery.js"></script>
+<script src="js/codemirror/codemirror.js"></script>
+<script src="js/codemirror/mode/python/python.js"></script>
+<script src="js/codemirror/addon/fold/comment-fold.js"></script>
+<script src="js/codemirror/addon/fold/brace-fold.js"></script>
+<script src="js/codemirror/addon/fold/foldcode.js"></script>
+<script src="js/codemirror/addon/fold/foldgutter.js"></script>
+<script src="js/codemirror/addon/fold/indent-fold.js"></script>
+<script src="js/codemirror/addon/selection/active-line.js"></script>
+<script src="js/codemirror/keymap/sublime.js"></script>
+<script src="js/codemirror/addon/edit/closebrackets.js"></script>
+<script src="js/codemirror/addon/edit/matchbrackets.js"></script>
+<script src="js/codemirror/addon/lint/lint.js"></script>
+<script src="js/codemirror/addon/hint/show-hint.js"></script>
+<script src="js/codemirror/addon/hint/anyword-hint.js"></script>
+<script src="js/codemirror/addon/search/search.js"></script>
+<script>
+    let editor = CodeMirror.fromTextArea(document.getElementById('code'), {
+        mode: "python",
+        lineNumbers: true,
+        lint: true,
+        indentUnit: 4,
+        keyMap: "sublime",
+        theme: "darcula",
+        autofocus: true,
+        lineWrapping: true,
+        foldGutter: true,
+        gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter", "CodeMirror-lint-markers"],
+        matchBrackets: true,
+        autoCloseBrackets: true,
+        styleActiveLine: true,
+        spellcheck: true,
+        search: true,
+    });
+    editor.on('keypress', () => {
+        editor.showHint({completeSingle: false});
+    });
+</script>
+</html>

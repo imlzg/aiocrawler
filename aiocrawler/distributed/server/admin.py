@@ -33,8 +33,8 @@ class Admin(object):
             web.get('/user/login', self.login, name='login'),
             web.post('/api/user/login', self.login, name='login_api'),
 
-            web.get('/api/user/nav', self.get_nav_api, name='nav_api'),
             web.get('/user/logout', self.logout, name='user-logout'),
+            web.get('/api/user/websocket_url', self.get_websocket_url, name='websocket_url'),
 
             web.get(r'/api/user/websocket/{token}', self.websocket, name='user_websocket'),
 
@@ -101,25 +101,12 @@ class Admin(object):
             })
 
     @login_required
-    async def get_nav_api(self, request: web.Request):
+    async def get_websocket_url(self, request: web.Request):
         session = await get_session(request)
-        user = self._user_db.get_user_info(session['username'])
-        if user:
-            resp = {
-                'status': 0,
-                'data': {
-                    'username': user.username,
-                    'created_at': user.created_at,
-                    'permission': PERMISSIONS[user.permission],
-                    'websocket_url': str(request.app.router['user_websocket'].url_for(token=session['token']))
-                }
-            }
-        else:
-            resp = {
-                'status': 100,
-                'msg': 'username: {username} is not found'.format(username=session['username'])
-            }
-        return jsonp_response(request, resp)
+        return jsonp_response(request, {
+            'status': 0,
+            'websocket_url': str(request.app.router['user_websocket'].url_for(token=session['token']))
+        })
 
     @login_required
     async def logout(self, request: web.Request):
@@ -138,8 +125,7 @@ class Admin(object):
             await websocket.prepare(request)
             self._websocket[token] = websocket
 
-            async for _ in websocket:
-                pass
+            await self.receive(websocket)
             self._websocket.pop(token, None)
             if not websocket.closed:
                 await websocket.close()
@@ -172,6 +158,6 @@ class Admin(object):
         if not websocket.closed:
             await websocket.send_str(dumps(obj))
 
-    @login_required
-    async def spider_on_server(self, request: web.Request):
-        return jsonp_response(request, scan_spider())
+    async def receive(self, websocket):
+        async for msg in websocket:
+            pass

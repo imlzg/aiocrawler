@@ -4,6 +4,7 @@ from aiocrawler.spider import Spider
 from aiocrawler import Request
 from aiocrawler import Item
 from typing import List
+from pickle import dumps, loads
 from aiocrawler.schedulers.scheduler import BaseScheduler
 
 
@@ -36,4 +37,4 @@ class MemoryScheduler(BaseScheduler):
         return len(self.__requests)
 
     def append_error_request(self, request: Request):
-        self.__error_requests.add(request)
+        self.__error_requests.add(dumps(request))

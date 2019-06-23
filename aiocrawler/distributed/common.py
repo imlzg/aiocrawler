@@ -13,7 +13,6 @@ def scan(project_dir: Union[str, Path] = None, spider_name: str = 'spiders'):
     :return:
     """
     projects = {}
-    project_hashes = set()
     project_dir = Path(project_dir) if project_dir else Path('projects')
     spider_data = project_dir.glob('**/{}.py'.format(spider_name))
     for spider_file in spider_data:
@@ -29,23 +28,63 @@ def scan(project_dir: Union[str, Path] = None, spider_name: str = 'spiders'):
             project['files'][file.stem] = hash_file(file)
 
         project['hash'] = hash_strings(project['files'])
-        project_hashes.add(project['hash'])
 
         projects[project_name] = project
 
-    return projects, project_hashes
+    return projects
 
 
-def scan_project_dir(project_dir: Union[str, Path] = None, spider_name: str = 'spiders'):
-    """
-    :param project_dir:
-    :param spider_name:
-    """
-    project_dir = Path(project_dir) if project_dir else Path('projects')
-    spider_data = project_dir.glob('**/{}.py'.format(spider_name))
-    return {
-        spider_file.parent for spider_file in spider_data
-    }
+class ProjectScanner(object):
+    def __init__(self, project_dir: Union[str, Path], spider_name: str = 'spiders'):
+        self.project_dir = Path(project_dir) if project_dir else Path('projects')
+        self.spider_name = spider_name
+        self.projects = {}
+        self.updated_at = {}
+        self.scan()
+
+    def scan(self):
+        changed = {}
+        for spider_file in self.project_dir.glob('**/{}.py'.format(self.spider_name)):
+            project_name = spider_file.parent.name
+            stat = spider_file.stat()
+            if project_name not in self.projects:
+                self.updated_at[project_name] = {}
+                self.projects[project_name] = {'files': {}, 'name': project_name, 'path': str(spider_file.parent)}
+
+                self.projects[project_name]['created_at'] = datetime.fromtimestamp(
+                    stat.st_ctime).strftime(DATETIME_FORMAT)
+                self.projects[project_name]['updated_at'] = datetime.fromtimestamp(
+                    stat.st_mtime).strftime(DATETIME_FORMAT)
+
+                for file in spider_file.parent.glob('*.py'):
+                    self.projects[project_name]['files'][file.stem] = hash_file(file)
+                    self.updated_at[project_name][file.stem] = file.stat().st_mtime
+
+                self.projects[project_name]['hash'] = hash_strings(self.projects[project_name]['files'])
+                self.projects[project_name] = self.projects[project_name]
+
+                changed[project_name] = self.projects[project_name]
+            else:
+                updated_at = datetime.fromtimestamp(
+                    stat.st_mtime).strftime(DATETIME_FORMAT)
+                if self.projects[project_name]['updated_at'] != updated_at:
+                    self.projects[project_name]['updated_at'] = updated_at
+                    changed[project_name] = {'updated_at': updated_at}
+
+                for file in spider_file.parent.glob('*.py'):
+                    if file.stem not in self.updated_at[project_name] \
+                            or file.stat().st_mtime != self.updated_at[project_name][file.stem]:
+
+                        self.projects[project_name]['files'][file.stem] = hash_file(file)
+                        self.projects[project_name]['hash'] = hash_strings(self.projects[project_name]['files'])
+
+                        if project_name not in changed:
+                            changed[project_name] = {'files': {}}
+                        changed[project_name]['files'][file.stem] = self.projects[project_name]['files'][file.stem]
+                        changed[project_name]['hash'] = self.projects[project_name]['hash']
+
+                        self.updated_at[project_name][file.stem] = file.stat().st_mtime
+        return changed
 
 
 def hash_file(file: Union[str, Path], block_size=65536):

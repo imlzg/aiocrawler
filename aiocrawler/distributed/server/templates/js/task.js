@@ -58,9 +58,9 @@ function createTaskTable() {
 				title: 'Action',
 				align: 'center',
 				formatter: (value, row) => {
-					let data  = "<button class='btn btn-primary'><i class='fa fa-eye'></i> Detail</button>";
-					data += "<button class='btn btn-warning'><i class='fa fa-stop'></i> Stop</button>";
-					data += "<button class='btn btn-danger'><i class='fa fa-remove'></i> Remove</button>";
+					let data  = "<a class='btn btn-primary'><i class='fa fa-eye'></i> Detail</a>";
+					data += "<a class='btn btn-warning'><i class='fa fa-stop'></i> Stop</a>";
+					data += "<a class='btn btn-danger'><i class='fa fa-remove'></i> Remove</a>";
 					return data;
 				}
 			},

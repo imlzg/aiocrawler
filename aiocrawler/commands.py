@@ -9,6 +9,7 @@ from aiocrawler.engine import Engine
 from aiocrawler.utils import get_setting, get_spider, get_item
 from aiocrawler.extensions.templates import SpiderTemplate
 from aiocrawler import logger
+from string import ascii_letters
 
 
 def main():
@@ -52,6 +53,9 @@ def main():
         tmpl = SpiderTemplate(args.project_name)
         tmpl.gen_project()
     elif args.commands == "run" and args.project_name:
+        if not args.project_name.startswith(tuple(ascii_letters)):
+            logger.error('The project name should start with a letter')
+            return
         run_spider(args.project_name, args.setting_name)
 
     elif args.commands == "output":

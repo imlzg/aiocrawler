@@ -72,9 +72,10 @@ class Engine(object):
         # noinspection PyBroadException
         try:
             if asyncio.iscoroutine(task):
-                task = await task
+                return await task
+            else:
+                return task
 
-            return task
         except Exception:
             logger.error(traceback.format_exc())
 

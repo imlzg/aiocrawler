@@ -12,8 +12,6 @@ class $classname(BaseSettings):
     """
     If you use the redis server as the scheduler, the REDIS_URL must be configured in this settings or the Environmental variables.
     """
-    REDIS_URL = 'redis://user:password@redis_address:port'
-    REDIS_PROJECT_NAME = '$project_name'
 
     CONCURRENT_REQUESTS = 32
     CONCURRENT_WORDS = 16

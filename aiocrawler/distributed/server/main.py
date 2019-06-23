@@ -26,7 +26,7 @@ async def status404(request, handler):
     except web.HTTPException:
         pass
 
-    return aiohttp_jinja2.render_template('404.html', request, {})
+    return aiohttp_jinja2.render_template('404.html', request, {}, status=404)
 
 
 class Dashboard(object):

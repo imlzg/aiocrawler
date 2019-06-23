@@ -1,4 +1,7 @@
 
+let statusString = ['disconnected', 'connected', 'error'];
+let buttonClass = ['btn btn-secondary disabled', 'btn btn-success', 'btn btn-secondary disabled'];
+
 function notify(message){
     $.notify({
         icon: 'fa fa-bell-o',
@@ -71,7 +74,6 @@ function createTable(setting){
 		sidePagination: defaultSetting.sidePagination,
 		pageNumber: 1,
 		pageSize: 5,
-		pageList: [10, 25, 50, 100],
 		search: defaultSetting.search,
 		clickToSelect: true,
 		queryParamsType: '',
@@ -88,33 +90,32 @@ function createTable(setting){
 	});
 }
 
-function websocket(){
-        $.ajax({
-        url: '/api/user/nav',
-        method: 'get',
+function createWebsocket(){
+    $.ajax({
+        url: '/api/user/websocket_url',
         dataType: 'jsonp',
         success: (data) => {
-            if (data['status'] === 0)
-            {
-                let nav = data['data'];
+            if (data['status'] === 0) {
                 let currentHostPort = window.location.hostname + ':' + window.location.port;
-                let websocket = new WebSocket('ws://' + currentHostPort + nav['websocket_url']);
-                websocket.onmessage = (data) => {
-                  let jsonData = JSON.parse(data.data);
-                  if ('message' in jsonData){
-                      updateHeaderInfo();
-                      notify(jsonData['message']);
-                  }
+                let websocket = new WebSocket('ws://' + currentHostPort + data['websocket_url']);
+                websocket.onmessage = (received_data) => {
+                    received_data = JSON.parse(received_data.data);
+                    if ('message' in received_data)
+                        notify(received_data['message']);
                 };
-            }
-        },
-        error: () => {
-            notify({msg: 'Failed to connect websocket', type: 'danger'});
+                websocket.onclose = () => {
+                  console.log('websocket is closed');
+                };
+                websocket.onopen = () => {
+                  console.log('connected to the server');
+                };
+            }else
+                notify({msg: data['msg'], type: 'warning'});
         }
     });
 }
 
 $(document).ready(() => {
     getHeader();
-    websocket();
+    createWebsocket();
 });

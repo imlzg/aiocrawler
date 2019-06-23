@@ -9,7 +9,7 @@ from aiocrawler.filters.filter import BaseFilter
 class MemoryFilter(BaseFilter):
     def __init__(self, settings: BaseSettings):
         BaseFilter.__init__(self, settings)
-        self.__sha1s: Set[str] = ()
+        self.__sha1s: Set[str] = set()
 
     def filter_request(self, request: Request):
         sha1_request = self.sha1_request(request)

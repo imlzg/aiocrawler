@@ -72,21 +72,21 @@ function createConnectionTable(){
 				align: 'center',
 				formatter: (value, row) => {
 						let data = '';
-						data += "<button class='btn btn-primary' onclick='tableAction(" + JSON.stringify({
+						data += "<a class='btn btn-primary' onclick='tableAction(" + JSON.stringify({
 							command: 'agree',
 							id: row.id
-						}) + ")'><i class='fa fa-check'></i> Agree</button>\t";
+						}) + ")'><i class='fa fa-check'></i> Agree</a>\t";
 
-						data += "<button class='btn btn-warning' onclick='tableAction(" + JSON.stringify({
+						data += "<a class='btn btn-warning' onclick='tableAction(" + JSON.stringify({
 							command: 'ban',
 							id: row.id,
 							remote: row.remote
-						}) + ")'><i class='fa fa-ban'></i> Ban</button>\t";
+						}) + ")'><i class='fa fa-ban'></i> Ban</a>\t";
 
-						data += "<button class='btn btn-danger' onclick='tableAction(" + JSON.stringify({
+						data += "<a class='btn btn-danger' onclick='tableAction(" + JSON.stringify({
 							command: 'remove',
 							id: row.id
-						}) + ")'><i class='fa fa-remove'></i> Remove</button>";
+						}) + ")'><i class='fa fa-remove'></i> Remove</a>";
 						return data;
 					}
 				}],

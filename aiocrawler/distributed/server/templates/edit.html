@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+	<title>Aiocrawler Dashboard</title>
+	<meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, shrink-to-fit=no' name='viewport' />
+	<link rel="stylesheet" href="/css/bootstrap/bootstrap.min.css">
+	<link rel="stylesheet" href="/css/font-awesome.min.css">
+	<link rel="stylesheet" href="/css/ready.min.css">
+	<link rel="stylesheet" href="/css/jquery.dm-uploader.min.css">
+	<link rel="stylesheet" href="/css/codemirror/codemirror.css">
+    <link rel="stylesheet" href="/css/codemirror/theme/darcula.css">
+    <link rel="stylesheet" href="/css/codemirror/addon/fold/foldgutter.css">
+    <link rel="stylesheet" href="/css/codemirror/addon/lint/lint.css">
+    <link rel="stylesheet" href="/css/codemirror/addon/hint/show-hint.css">
+    <link rel="stylesheet" href="/css/ztree/bootstrapStyle.css">
+</head>
+<body>
+	<div class="wrapper">
+		<div id="header"></div>
+		<div class="main-panel">
+			<div class="content">
+				<div class="container-fluid">
+					<div class="col-md-12">
+						<div class="card card-tasks">
+							<div class="card-header ">
+								<h4 class="card-title">Project Edit</h4>
+							</div>
+							<div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-2 col-sm-12">
+                                        <label for="tree">Files</label><ul id="tree" class="ztree"></ul>
+                                    </div>
+                                    <div class="col-md-10 col-sm-12">
+                                        <label for="code">Code</label><textarea id="code"></textarea>
+                                    </div>
+                                </div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+<script src="/js/jquery.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+<script src="/js/aiocrawler.js"></script>
+<script src="/js/codemirror/codemirror.js"></script>
+<script src="/js/codemirror/mode/python/python.js"></script>
+<script src="/js/codemirror/addon/fold/comment-fold.js"></script>
+<script src="/js/codemirror/addon/fold/brace-fold.js"></script>
+<script src="/js/codemirror/addon/fold/foldcode.js"></script>
+<script src="/js/codemirror/addon/fold/foldgutter.js"></script>
+<script src="/js/codemirror/addon/fold/indent-fold.js"></script>
+<script src="/js/codemirror/addon/selection/active-line.js"></script>
+<script src="/js/codemirror/keymap/sublime.js"></script>
+<script src="/js/codemirror/addon/edit/closebrackets.js"></script>
+<script src="/js/codemirror/addon/edit/matchbrackets.js"></script>
+<script src="/js/codemirror/addon/lint/lint.js"></script>
+<script src="/js/codemirror/addon/hint/show-hint.js"></script>
+<script src="/js/codemirror/addon/hint/anyword-hint.js"></script>
+<script src="/js/codemirror/addon/search/search.js"></script>
+<script src="/js/jquery.ztree.all.min.js"></script>
+<script>
+    let editor = CodeMirror.fromTextArea(document.getElementById('code'), {
+        mode: "python",
+        lineNumbers: true,
+        lint: true,
+        indentUnit: 4,
+        keyMap: "sublime",
+        theme: "darcula",
+        autofocus: true,
+        lineWrapping: true,
+        foldGutter: true,
+        gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter", "CodeMirror-lint-markers"],
+        matchBrackets: true,
+        autoCloseBrackets: true,
+        styleActiveLine: true,
+        spellcheck: true,
+        search: true
+    });
+    editor.on('keypress', () => {
+        editor.showHint({completeSingle: false});
+    });
+
+    let nodes = [
+        {name: 'test1', open: true, children: [
+                {name: 'test1_1', children: [{name: 'test1_1_1'}, {name: 'test1_1_2'}]},
+                {name: 'test1_2'},
+                {name: 'test1_3'}]
+        },
+        {
+            name: 'test2', children: [
+                {name: 'test2_2'}
+            ]
+        }
+    ];
+    let setting = {
+        edit: {
+                enable: true
+        },
+        callback: {
+        }
+    };
+    let ztree = $.fn.zTree.init($('#tree'), setting, nodes);
+</script>
+</html>

@@ -2,7 +2,6 @@
 # Date      : $date
 # PROJECT   : $project_name
 # File      : $filename
-from aiocrawler import BaseSettings
 from aiocrawler.middlewares import BaseMiddleware
 
 
@@ -17,7 +16,7 @@ class $classname(BaseMiddleware):
     def process_exception(self, request, exception):
         pass
 
-    def process_item(item):
+    def process_item(self, item):
         pass
 
 
@@ -32,5 +31,5 @@ class Async$classname(BaseMiddleware):
     async def process_exception(self, request, exception):
         pass
 
-    async def process_item(item):
+    async def process_item(self, item):
         pass

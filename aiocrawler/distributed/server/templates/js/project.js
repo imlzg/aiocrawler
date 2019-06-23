@@ -40,9 +40,11 @@ function createProjectTable(){
                 title: 'Action',
                 align: 'center',
                 formatter: (value, row) => {
-                    let data = "<button class='btn btn-primary'><i class='fa fa-edit'></i> Edit</button>\t";
-                    data += "<button class='btn btn-warning'><i class='fa fa-cogs'></i> Schedule</button>";
-                    data += "<button class='btn btn-danger' onclick='remove()'><i class='fa fa-remove'></i> Remove</button>";
+                    let data = "<a class='btn btn-primary' onclick='edit(" + JSON.stringify({
+                        projectName: row.name
+                        }) + ")'><i class='fa fa-edit'></i> Edit</a>\t";
+                    data += "<a class='btn btn-warning' onclick='createDeployTable(\"" + row.name + "\")'><i class='fa fa-cogs'></i> Deploy</a>\t";
+                    data += "<a class='btn btn-danger' onclick='remove()'><i class='fa fa-remove'></i> Remove</a>";
                     return data;
                 }
             }
@@ -94,7 +96,7 @@ function UIMultiUpdateFileProgress(id, percent, color, active)
 function createProjectUpload(){
     $('#drag-and-drop-zone').dmUploader({
         url: '/api/server/project/upload',
-        allowedTypes: "tar|zip",
+        allowedTypes: "tar|zip|tar.gz|tar.bz|tar.xz",
         onComplete: () => {
           projectTable.bootstrapTable('refresh');
           updateHeaderInfo();
@@ -131,6 +133,113 @@ function createProjectUpload(){
             notify({msg: 'Invalid file type', type: 'danger'});
         },
     });
+}
+
+function edit(params){
+    let editor = CodeMirror.fromTextArea(document.getElementById('code'), {
+        content: "Project Code",
+        mode: "python",
+        lineNumbers: true,
+        lint: true,
+        keyMap: "sublime",
+        theme: "darcula",
+        autofocus: true,
+        lineWrapping: true,
+        foldGutter: true,
+        gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter", "CodeMirror-lint-markers"],
+        matchBrackets: true,
+        indentUnit: 4,
+        autoCloseBrackets: true,
+        styleActiveLine: true,
+    });
+    editor.on('keypress', () => {
+        editor.showHint({completeSingle: false});
+    });
+    $('#edit-modal-title').text(params['projectName']);
+    $('#edit-modal').modal('show');
+}
+
+function deploy(params){
+    let deployButton = $('#deploy-' + params['uuid']);
+    deployButton.text('Deploying');
+    deployButton.addClass('fa fa-upload disabled');
+    let url = '/api/server/project/deploy/name/' + params['projectName'] + '/uuid/' + params['uuid'];
+    $.ajax({
+        url: url,
+        dataType: 'jsonp',
+        success: (data) => {
+            if (data['status'] !== 0)
+            {
+                $('#modal-text').text(data['msg']);
+                deployButton.text('Error');
+            }
+            else
+                deployButton.text('Deployed');
+        }
+    });
+}
+
+function createDeployTable(projectName){
+    createTable({
+        table: $('#deploy-table'),
+        url: '/api/server/crawler/active_list',
+        columns: [
+        {
+            field: 'id',
+            title: 'ID',
+            align: 'center',
+            formatter: (value, row) => {
+                return row.id;
+            }
+        },
+        {
+            field: 'status',
+            title: 'Status',
+            align: 'center',
+            formatter: (value, row) => {
+                return '<a class="' + buttonClass[row.status] + ' disabled"> ' + statusString[row.status] + '</a>';
+            }
+        },
+        {
+            field: 'remote',
+            title: 'Remote Host',
+            align: 'center',
+            formatter: (value, row) => {
+                return row.remote;
+            }
+        },
+        {
+            field: 'host',
+            title: 'Host/Hostname',
+            align: 'center',
+            formatter: (value, row) => {
+                return row.host + '/' + row.hostname;
+            }
+        },
+        {
+            field: 'authorized_at',
+            title: 'Authorized at',
+            align: 'center',
+            formatter: (value, row) => {
+                return row['authorized_at'];
+            }
+        },
+        {
+            field: 'action',
+            title: 'Action',
+            align: 'center',
+            formatter: (value, row) => {
+                let data = "";
+                data += "<a class='btn btn-primary' onclick='deploy(" + JSON.stringify({
+                    projectName: projectName,
+                    uuid: row['uuid']
+                }) + ")' id='deploy-" + row.uuid + "'><i class='fa fa-upload'></i> Deploy</a>";
+                return data;
+            }
+        }]
+    });
+    $('#deploy-modal-title').text(projectName);
+    $('#deploy-modal').modal('show');
 }
 
 $(document).ready(() => {

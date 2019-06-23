@@ -1,11 +1,30 @@
 let crawlerTable = $('#crawler-table');
 
+function remove(uuid){
+    let url = '/api/server/connection/remove/' + uuid;
+    $.ajax({
+        url: url,
+        dataType: 'jsonp',
+        success: (data) => {
+            if (data['status'] === 0) {
+                updateHeaderInfo();
+                notify({msg: data['msg'], type: 'success'});
+            }
+            else
+                notify({msg: data['msg'], type: 'warning'});
+            crawlerTable.bootstrapTable('refresh');
+        }
+    });
+}
+
+function setting(uuid){
+
+}
+
 function createCrawlerTable() {
-    let statusString = ['disconnect', 'connected', 'error'];
-    let buttonClass = ['btn btn-secondary', 'btn btn-success', 'btn btn-danger'];
     createTable({
         table: crawlerTable,
-        url: '/api/server/crawler/list',
+        url: '/api/server/crawler/verified_list',
         columns: [
             {
                 field: 'id',
@@ -20,7 +39,7 @@ function createCrawlerTable() {
                 title: 'Status',
                 align: 'center',
                 formatter: (value, row) => {
-                    return '<span class="' + buttonClass[row.status] + '"> ' + statusString[row.status] + '</span>';
+                    return '<a class="' + buttonClass[row.status] + '"> ' + statusString[row.status] + '</a>';
                 }
             },
             {
@@ -53,9 +72,9 @@ function createCrawlerTable() {
                 align: 'center',
                 formatter: (value, row) => {
                     let data = '';
-                    data += '<button class="btn btn-primary" id="edit-' + row.id + '"><i class="fa fa-edit"></i> Edit</button>\t';
-                    data += '<button class="btn btn-warning" id="schedule-' + row.id + '"><i class="fa fa-cogs"></i> Schedule</button>\t';
-                    data += '<button class="btn btn-danger" id="remove-' + row.id + '"><i class="fa fa-remove"></i> Remove</button>';
+                    data += "<a class='" + buttonClass[row.status] +"' onclick=''><i class='fa fa-bug'></i> Projects</a>\t";
+                    data += "<a class='" + buttonClass[row.status] + "' onclick='setting(" + row.uuid + ")'><i class='fa fa-cogs'></i> Setting</a>\t";
+                    data += "<a class='btn btn-danger' onclick='remove(\"" + row.uuid + "\")'><i class='fa fa-remove'></i> Remove</a>";
                     return data;
                 }
             }

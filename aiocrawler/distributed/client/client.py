@@ -4,23 +4,31 @@ import aiojobs
 from pathlib import Path
 from ujson import loads
 from shutil import unpack_archive
-from typing import Optional, Dict
+from typing import Optional, Dict, Union
 from aiohttp import ClientSession, CookieJar
 from aiocrawler.engine import Engine
 from aiocrawler.log import logger
+from aiocrawler.distributed.common import scan, ProjectScanner
 from aiocrawler.utils import get_setting, get_spider
-from aiocrawler.distributed.common import SPIDER_DIR, scan_spider
 from aiocrawler.distributed.client.client_collector import ClientCollector
 from aiocrawler.distributed.client.connection import WebsocketConnection
 
 
 class WebsocketClient(object):
-    def __init__(self, server_host: str, port: Optional[int] = 8989):
+    def __init__(self, server_host: str,
+                 port: Optional[int] = 8989,
+                 project_dir: Union[str, Path] = None,
+                 minitor_interval: int = 60):
         self._job_scheduler: aiojobs.Scheduler = None
-        self._conn = WebsocketConnection(server_host=server_host, port=port)
+        self.connection = WebsocketConnection(server_host=server_host, port=port)
         self._aiohttp_client_session: ClientSession = None
 
+        self.__project_dir = project_dir if project_dir else Path('projects')
         self.__monitors: Dict[str, Monitor] = {}    # {spider_name: monitor}
+
+        self.__last_changed: Dict[str, str] = {}
+        self.__monitor_interval = minitor_interval
+        self.__project_scanner = ProjectScanner(project_dir=self.__project_dir)
 
     def run(self):
         loop = asyncio.get_event_loop()
@@ -32,22 +40,28 @@ class WebsocketClient(object):
     async def close(self):
         if self._aiohttp_client_session:
             await self._aiohttp_client_session.close()
-        if self._conn:
-            await self._conn.close()
+        if self.connection:
+            await self.connection.close()
+        if not self._job_scheduler.closed:
+            await self._job_scheduler.close()
 
     async def main(self):
         try:
             self._job_scheduler = await aiojobs.create_scheduler(limit=None)
-            if not await self._conn.connect():
+            await self.connection.connect()
+            if not self.connection.connected:
                 return
 
+            await self._job_scheduler.spawn(self.project_monitor())
             await self._interactive_loop()
+            logger.debug('Disconnect from the server "{host}:{port}"'.format(host=self.connection.server_host,
+                                                                             port=self.connection.port))
         finally:
             await self.close()
 
     async def _interactive_loop(self):
-        logger.debug('Starting interactive loop...')
-        async for msg in self._conn.websocket:
+        logger.debug('start interactive loop...')
+        async for msg in self.connection.websocket:
             # noinspection PyBroadException
             try:
                 data = loads(msg.data)
@@ -63,13 +77,16 @@ class WebsocketClient(object):
                     await self._job_scheduler.spawn(self.do_stop_spider(data))
                 elif command == 5:
                     await self._job_scheduler.spawn(self.do_update(data))
+                elif command == 6:
+                    # await self.do_scan(data)
+                    pass
             except Exception:
                 pass
 
     async def do_run_spider(self, data):
         monitor = Monitor(package=data['info']['package'],
                           spider_classname=data['info']['spider_classname'],
-                          conn=self._conn,
+                          conn=self.connection,
                           job_scheduler=self._job_scheduler)
         self.__monitors[data['info']['spider_classname']] = monitor
         await monitor.main()
@@ -84,40 +101,47 @@ class WebsocketClient(object):
         if not self._aiohttp_client_session:
             await self.__create_aiohttp_client_session()
 
-        url = data['info']['url']
-        filename = Path(data['info']['filename'])
-        project_dir = SPIDER_DIR / filename.stem
-        project_dir.mkdir(exist_ok=True)
+        token = data['info']['token']
+        filename = data['info']['filename']
         try:
+            url = 'http://{host}:{port}/api/server/project/download/{token}'.format(
+                host=self.connection.server_host,
+                port=self.connection.port,
+                token=token
+            )
             async with self._aiohttp_client_session.get(url) as resp:
                 content = await resp.read()
 
-            with filename.open('wb') as fb:
+            with open(filename, 'wb') as fb:
                 fb.write(content)
 
-            unpack_archive(filename=filename, extract_dir=project_dir)
+            unpack_archive(filename=filename, extract_dir=str(self.__project_dir/Path(filename).stem.split('_', 2)[-1]))
+            Path(filename).unlink()
 
-            await self._conn.send_json({
+            await self.connection.send_json({
                 'command': data['command'],
                 'status': 0,
-                'project_name': filename.stem,
-                'msg': 'download successfully'
-            }, classname=self.__class__.__name__)
+                'filename': filename
+            }, classname='client')
         except Exception as e:
-            await self._conn.send_json({
+            await self.connection.send_json({
                 'command': data['command'],
                 'status': 100,
-                'project_name': filename.stem,
+                'filename': filename,
                 'error': str(e)
-            }, classname=self.__class__.__name__)
+            }, classname='client')
 
-    async def do_scan_spider(self, data):
-        spiders = scan_spider()
-        await self._conn.send_json({
-            'command': data['command'],
-            'status': 0,
-            'spiders': spiders
-        }, classname=self.__class__.__name__)
+    async def project_monitor(self):
+        while True:
+            changed = self.__project_scanner.scan()
+            if changed:
+                await self.connection.send_json({
+                    'classname': 'client',
+                    'command': 6,
+                    'status': 0,
+                    'projects': changed
+                })
+            await asyncio.sleep(self.__monitor_interval)
 
     async def do_update(self, data):
         pass
