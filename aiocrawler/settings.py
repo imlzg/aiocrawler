@@ -23,7 +23,7 @@ class BaseSettings:
 
     CONCURRENT_REQUESTS = 32
     CONCURRENT_WORDS = 8
-    DEFAULT_TIMEOUT = 20
+    DEFAULT_TIMEOUT = 30
     DEFAULT_HEADERS = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'zh-CN',

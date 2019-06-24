@@ -18,11 +18,9 @@ class RedisFilter(BaseFilter, RedisConnector):
         self.__redis_filters_key = settings.REDIS_PROJECT_NAME + ':filters'
 
     async def filter_request(self, request: Request):
-        if request.dont_filter:
-            return request
-
-        elif await self.exist_request(request):
+        if await self.exist_request(request):
             return None
+
         return request
 
     async def filter_item(self, item: Item):

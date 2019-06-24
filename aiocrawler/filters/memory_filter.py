@@ -18,7 +18,6 @@ class MemoryFilter(BaseFilter):
             return request
 
         self.logger.debug('The Request has existed in the Memory: {}'.format(sha1_request))
-        return None
 
     def filter_item(self, item: Item):
         sha1_item = self.sha1_item(item)
@@ -27,4 +26,3 @@ class MemoryFilter(BaseFilter):
             return item
 
         self.logger.debug('The Item has existed in the Memory: {}'.format(sha1_item))
-        return None
