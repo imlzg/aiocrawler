@@ -71,8 +71,9 @@ class BaseCollector(object):
         self.response_received_count += 1
         self.response_bytes += len(response.text)
 
-        self.response_status_count[response.status] = self.response_status_count[response.status] + 1\
-            if response.status in self.response_status_count.keys() else 1
+        status = str(response.status)
+        self.response_status_count[status] = self.response_status_count[status] + 1\
+            if status in self.response_status_count.keys() else 1
 
     def collect_downloader_exception(self):
         self.exception_count += 1
@@ -91,5 +92,5 @@ class BaseCollector(object):
     def output_stats(self):
         logger.debug('Dumping Aiocrawler stats:')
         for key in self.get_collect_keys():
-            logger.debug('{classname}: "{key}": {value}',
-                         classname=self.__class__.__name__, key=key, value=getattr(self, key))
+            print('{classname}: "{key}": {value}'.format(
+                classname=self.__class__.__name__, key=key, value=getattr(self, key)))

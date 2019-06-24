@@ -202,7 +202,7 @@ class Engine(object):
                            )
 
             response.meta = request.meta
-            if isfunction(request.callback) and hasattr(self._spider.__class__, request.callback.__name__):
+            if hasattr(self._spider.__class__, request.callback.__name__):
                 handled_data = request.callback(response)
 
         return handled_data
@@ -338,6 +338,7 @@ class Engine(object):
                 break
             await asyncio.sleep(0.1)
         await main_job.close()
+        await self.__job_scheduler.close()
 
     def run(self):
         loop = asyncio.get_event_loop()
